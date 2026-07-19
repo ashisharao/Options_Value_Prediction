@@ -1,18 +1,18 @@
 """
-Option P&L Surface — app.py
-Gradio SDK (HF free tier). Custom FastAPI routes added to demo.app
-before launch(). Gradio page redirects to /app where our frontend lives.
+Option P&L Surface — app.py (Render.com)
+Pure FastAPI, no Gradio. Serves frontend + live market data API.
 """
 
-import time, logging
+import time, logging, os
 from datetime import datetime
 import pytz
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import uvicorn, os
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
+_app = FastAPI(title="Option PnL Surface")
 
 # ── Cache ──────────────────────────────────────────────────────────────
 _cache: dict = {}
@@ -46,28 +46,18 @@ def safe_float(v, d=0.0):
         return d if f != f else f
     except: return d
 
-# ── Gradio UI (redirects to /app) ─────────────────────────────────────
-with gr.Blocks(title="Option P&L Surface") as demo:
-    gr.HTML("""
-        <script>window.location.replace("/app");</script>
-        <div style="text-align:center;padding:3rem;font-family:sans-serif">
-            <p>Redirecting to the app…
-            <a href="/app">Click here if not redirected</a></p>
-        </div>
-    """)
-
-# ── Custom routes on demo.app (before launch) ──────────────────────────
-
-@demo.app.get("/app", response_class=HTMLResponse)
+# ── Routes ─────────────────────────────────────────────────────────────
+@_app.get("/", response_class=HTMLResponse)
+@_app.get("/app", response_class=HTMLResponse)
 async def serve_frontend():
     with open("static/index.html") as f:
         return HTMLResponse(f.read())
 
-@demo.app.get("/health")
+@_app.get("/health")
 async def health():
     return {"status": "ok", "time_ist": ist_now().isoformat()}
 
-@demo.app.get("/api/market")
+@_app.get("/api/market")
 async def get_market():
     cached = _get("market", 30)
     if cached: return cached
@@ -87,7 +77,7 @@ async def get_market():
     _set("market", result)
     return result
 
-@demo.app.get("/api/chain")
+@_app.get("/api/chain")
 async def get_chain(symbol: str = "NIFTY"):
     key = f"chain_{symbol.upper()}"
     cached = _get(key, 60)
@@ -155,5 +145,9 @@ async def get_chain(symbol: str = "NIFTY"):
     _set(key, result)
     return result
 
-# ── Launch (blocks — keeps HF Space alive) ────────────────────────────
-uvicorn.run(_app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+# ── Entry point ────────────────────────────────────────────────────────
+app = _app   # uvicorn looks for 'app'
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
