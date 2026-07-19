@@ -3,3 +3,4 @@ yfinance>=0.2.38
 pandas>=2.0.0
 scipy>=1.11.0
 pytz>=2024.1
+uvicorn>=0.27.0
