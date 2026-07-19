@@ -7,7 +7,7 @@ before launch(). Gradio page redirects to /app where our frontend lives.
 import time, logging
 from datetime import datetime
 import pytz
-import gradio as gr
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import uvicorn, os
 
