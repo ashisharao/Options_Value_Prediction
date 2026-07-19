@@ -9,6 +9,7 @@ from datetime import datetime
 import pytz
 import gradio as gr
 from fastapi.responses import HTMLResponse
+import uvicorn, os
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -155,4 +156,4 @@ async def get_chain(symbol: str = "NIFTY"):
     return result
 
 # ── Launch (blocks — keeps HF Space alive) ────────────────────────────
-demo.launch(server_name="0.0.0.0", server_port=7860)
+uvicorn.run(_app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
