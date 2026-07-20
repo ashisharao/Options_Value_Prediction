@@ -177,7 +177,7 @@ let chart = null;
 
 // ── Input handling ─────────────────────────────────────────────────────
 function onInput(key, val){
-  if(key === 'expiry') st[key] = val;
+  if(key === 'expiry' || key === 'targetDate') st[key] = val;
   else { const v = parseFloat(val); if(!isNaN(v) && v>0) st[key]=v; }
   if(key === 'spot' || key === 'strike' || key === 'step') buildStrikePills();
   refresh();
