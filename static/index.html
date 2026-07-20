@@ -239,6 +239,7 @@ function parseMarketSamples(){
 // ── Compute curves ────────────────────────────────────────────────────
 function computeCurves(){
   const {dates, labels, expiryEnd} = parseMarketSamples();
+  console.log('samples:', dates.length, 'expiry:', expiryEnd, 'now:', new Date());
   if(!dates.length) return null;
   const {spot, iv, rate, type} = st;
   const sig = iv/100, r = rate/100;
