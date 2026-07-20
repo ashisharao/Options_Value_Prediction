@@ -275,7 +275,8 @@ function computeCurves(){
               borderDash: isATM ? [] : []
             }};
   });
-  return {labels, datasets, strikes, expiry};
+  console.log('first dataset sample values:', datasets[0]?.data?.slice(0,3), 'todayVal:', datasets[0]?.todayVal);
+  return {labels, datasets, strikes, expiryEnd};
 }
 
 function round2(v){ return Math.round(v*100)/100; }
