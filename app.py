@@ -65,8 +65,8 @@ async def get_market():
               "source": None, "timestamp": ist_now().isoformat(), "error": None}
     try:
         import yfinance as yf
-        spot = yf.Ticker("^NSEI").fast_info.get("last_price")
-        vix  = yf.Ticker("^INDIAVIX").fast_info.get("last_price")
+        spot = yf.Ticker("^NSEI").history(period="1d")["Close"].iloc[-1]
+        vix  = yf.Ticker("^INDIAVIX").history(period="1d")["Close"].iloc[-1]
         if spot: result["spot"] = round(float(spot), 2)
         if vix:  result["vix"]  = round(float(vix),  2)
         result["source"] = "yfinance"
