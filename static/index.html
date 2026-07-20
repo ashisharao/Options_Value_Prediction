@@ -294,7 +294,11 @@ function computeCurves(){
   // Add target spot dots as extra datasets
   strikes.forEach((K,i)=>{
     const col = PALETTE[i%PALETTE.length];
-    const dotData = dates.map((_,j)=> j===targetIdx ? targetVals[i] : null);
+    const todayVal = datasets[i].todayVal;
+    const targetDot = st.ymode==='pct' && todayVal>0
+      ? round2(targetVals[i]/todayVal*100)
+      : targetVals[i];
+    const dotData = dates.map((_,j)=> j===targetIdx ? targetDot : null);
     datasets[i].targetVal = targetVals[i];
     datasets.push({
       dataset:{
