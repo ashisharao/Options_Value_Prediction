@@ -214,28 +214,31 @@ function buildStrikePills(){
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────
-function parseDates(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const expiry = new Date(st.expiry); expiry.setHours(0,0,0,0);
-  if(expiry <= today) return {dates:[], labels:[]};
-  const dates=[], labels=[];
-  const d = new Date(today);
-  const fmt = new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short'});
-  while(d <= expiry){
-    dates.push(new Date(d));
-    labels.push(fmt.format(d));
-    d.setDate(d.getDate()+1);
-  }
-  return {dates, labels, expiry, today};
+function toIST(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}))}
+
+function isMktOpen(d){
+  const ist=toIST(d), day=ist.getDay(), m=ist.getHours()*60+ist.getMinutes();
+  return day>0&&day<6&&m>=555&&m<=930; // 555=9h15, 930=15h30
 }
 
-function daysLeft(date, expiry){
-  return Math.max((expiry-date)/(86400000), 0);
+function parseMarketSamples(){
+  const now=new Date();
+  const expiryEnd=new Date(st.expiry+'T15:30:00+05:30');
+  if(expiryEnd<=now) return {dates:[],labels:[],expiryEnd};
+  const STEP=15*60*1000, dates=[new Date(now)], labels=['Now'];
+  const dfmt=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'});
+  const tfmt=new Intl.DateTimeFormat('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata',hour12:false});
+  let cur=new Date(Math.ceil(now.getTime()/STEP)*STEP);
+  while(cur<=expiryEnd){
+    if(isMktOpen(cur)){dates.push(new Date(cur));labels.push(dfmt.format(cur)+' '+tfmt.format(cur));}
+    cur=new Date(cur.getTime()+STEP);
+  }
+  return {dates,labels,expiryEnd};
 }
 
 // ── Compute curves ────────────────────────────────────────────────────
 function computeCurves(){
-  const {dates, labels, expiry} = parseDates();
+  const {dates, labels, expiryEnd} = parseMarketSamples();
   if(!dates.length) return null;
   const {spot, iv, rate, type} = st;
   const sig = iv/100, r = rate/100;
@@ -243,7 +246,7 @@ function computeCurves(){
 
   const datasets = strikes.map((K, i) => {
     const values = dates.map(d => {
-      const T = daysLeft(d, expiry) / 365;
+      const T = Math.max((expiryEnd-d)/(365*24*3600*1000), 0);
       const raw = bs(spot, K, T, r, sig, type);
       return raw;
     });
@@ -312,6 +315,7 @@ function refresh(){
           titleColor:'#94A3B8',
           bodyColor:'#E2E8F0',
           callbacks: {
+            title: items => labels[items[0].dataIndex],
             label: ctx => {
               const v = ctx.parsed.y;
               const lbl = st.ymode==='pct' ? v.toFixed(1)+'%' : '₹'+v.toFixed(2);
