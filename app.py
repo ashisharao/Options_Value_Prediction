@@ -84,50 +84,47 @@ async def get_chain(symbol: str = "NIFTY"):
     if cached: return cached
     result = {"symbol": symbol.upper(), "spot": None, "atm_strike": None,
               "atm_iv": None, "expiry": None, "strikes": [],
-              "source": "nselib", "timestamp": ist_now().isoformat(), "error": None}
+              "source": "nse_direct", "timestamp": ist_now().isoformat(), "error": None}
     try:
-        from nselib import derivatives
-        df = derivatives.nse_live_option_chain(symbol=symbol.upper(), oi_mode="full")
-        if df is None or df.empty:
-            result["error"] = "NSE returned empty data — markets may be closed or IP blocked."
-            _set(key, result); return result
+        import requests
+        hdrs = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.nseindia.com/",
+        }
+        s = requests.Session()
+        s.get("https://www.nseindia.com/", headers=hdrs, timeout=10)
+        r = s.get(
+            f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol.upper()}",
+            headers=hdrs, timeout=10
+        )
+        data = r.json()
+        records = data["records"]
+        spot = float(records["underlyingValue"])
+        result["spot"] = round(spot, 2)
+        result["expiry"] = records["expiryDates"][0]
 
-        spot_col   = find_col(df, ["underlyingValue", "underlying_value"])
-        exp_col    = find_col(df, ["expiryDate", "expiry_date", "expiry"])
-        strike_col = find_col(df, ["strikePrice", "strike_price", "strike"])
-        call_ltp   = find_col(df, ["CE.lastPrice",         "CE.ltp"])
-        put_ltp    = find_col(df, ["PE.lastPrice",         "PE.ltp"])
-        call_iv    = find_col(df, ["CE.impliedVolatility", "CE.IV"])
-        put_iv     = find_col(df, ["PE.impliedVolatility", "PE.IV"])
-        call_oi    = find_col(df, ["CE.openInterest",      "CE.OI"])
-        put_oi     = find_col(df, ["PE.openInterest",      "PE.OI"])
-
-        if spot_col: result["spot"]   = round(safe_float(df[spot_col].iloc[0]), 2)
-        if exp_col:  result["expiry"] = str(df[exp_col].iloc[0])
-
-        if not strike_col:
-            result["error"] = f"Cannot find strike col. Got: {list(df.columns)[:8]}"
-            _set(key, result); return result
-
-        spot = result["spot"] or 24000
-        atm  = round(spot / 50) * 50
+        atm = round(spot / 50) * 50
         result["atm_strike"] = atm
 
         strikes = []
-        for _, row in df.iterrows():
-            try:
-                s = int(safe_float(row[strike_col]))
-                strikes.append({
-                    "strike":   s,
-                    "call_ltp": round(safe_float(row[call_ltp]) if call_ltp else 0, 2),
-                    "put_ltp":  round(safe_float(row[put_ltp])  if put_ltp  else 0, 2),
-                    "call_iv":  round(safe_float(row[call_iv])  if call_iv  else 0, 2),
-                    "put_iv":   round(safe_float(row[put_iv])   if put_iv   else 0, 2),
-                    "call_oi":  int(safe_float(row[call_oi])    if call_oi  else 0),
-                    "put_oi":   int(safe_float(row[put_oi])     if put_oi   else 0),
-                    "is_atm":   s == atm,
-                })
-            except: continue
+        for row in records["data"]:
+            if row.get("expiryDate") != result["expiry"]:
+                continue
+            s_price = int(row["strikePrice"])
+            ce = row.get("CE", {})
+            pe = row.get("PE", {})
+            strikes.append({
+                "strike":   s_price,
+                "call_ltp": round(float(ce.get("lastPrice", 0)), 2),
+                "put_ltp":  round(float(pe.get("lastPrice", 0)), 2),
+                "call_iv":  round(float(ce.get("impliedVolatility", 0)), 2),
+                "put_iv":   round(float(pe.get("impliedVolatility", 0)), 2),
+                "call_oi":  int(ce.get("openInterest", 0)),
+                "put_oi":   int(pe.get("openInterest", 0)),
+                "is_atm":   s_price == atm,
+            })
 
         result["strikes"] = sorted(strikes, key=lambda x: x["strike"])
         atm_rows = [s for s in result["strikes"] if s["strike"] == atm]
@@ -136,8 +133,6 @@ async def get_chain(symbol: str = "NIFTY"):
             result["atm_iv"] = round(sum(ivs)/len(ivs), 2) if ivs else None
         logger.info(f"Chain OK: {len(strikes)} strikes ATM={atm} IV={result['atm_iv']}")
 
-    except ImportError:
-        result["error"] = "nselib not installed"
     except Exception as exc:
         logger.error(f"Chain: {exc}")
         result["error"] = f"NSE fetch failed: {exc}. App works with manual inputs."
