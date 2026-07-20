@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Option Value Curves</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#09162A;color:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:10px;min-height:100vh;font-size:13px}
@@ -96,6 +97,13 @@ canvas{display:block}
   <div class="ctrl"><label>Strike Step (₹)</label><input id="i-step" type="number" value="50" min="10" step="10" oninput="onInput('step',this.value)"></div>
   <div class="ctrl"><label>Risk-free Rate %</label><input id="i-rate" type="number" value="6.5" min="0" max="20" step="0.1" oninput="onInput('rate',this.value)"></div>
 </div>
+<div class="controls" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+  <div class="ctrl"><label>Target Nifty Price (₹)</label><input id="i-tprice" type="number" value="" step="50" placeholder="e.g. 24000" oninput="onInput('targetPrice',this.value)"></div>
+  <div class="ctrl"><label>Target Date</label><input id="i-tdate" type="date" oninput="onInput('targetDate',this.value)"></div>
+  <div class="ctrl" style="background:transparent;border-color:transparent;display:flex;align-items:flex-end;padding-bottom:8px">
+    <span style="font-size:10px;color:#475569;line-height:1.5">Leave target date blank to use expiry.<br>Leave target price blank to use current spot.</span>
+  </div>
+</div>
 
 <!-- Toggles -->
 <div class="row">
@@ -158,7 +166,7 @@ const _defExp = _defExpiry.toISOString().split('T')[0];
 document.getElementById('i-expiry').value = _defExp;
 
 let st = {spot:24300, strike:24300, expiry:_defExp, iv:15, step:50, rate:6.5,
-           type:'put', ymode:'value'};
+           type:'put', ymode:'value', targetPrice:null, targetDate:null};
 let activeStrikes = new Set([24100,24200,24300,24400,24500]); // default 5
 
 // Chart colours (fixed palette)
@@ -239,7 +247,6 @@ function parseMarketSamples(){
 // ── Compute curves ────────────────────────────────────────────────────
 function computeCurves(){
   const {dates, labels, expiryEnd} = parseMarketSamples();
-  console.log('samples:', dates.length, 'expiry:', expiryEnd, 'now:', new Date());
   if(!dates.length) return null;
   const {spot, iv, rate, type} = st;
   const sig = iv/100, r = rate/100;
@@ -275,8 +282,36 @@ function computeCurves(){
               borderDash: isATM ? [] : []
             }};
   });
-  console.log('first dataset sample values:', datasets[0]?.data?.slice(0,3), 'todayVal:', datasets[0]?.todayVal);
-  return {labels, datasets, strikes, expiryEnd};
+  // Target scenario
+  const tDateStr = st.targetDate || st.expiry;
+  const tSpot    = st.targetPrice || spot;
+  const tD       = new Date(tDateStr+'T15:30:00+05:30');
+  let targetIdx  = dates.length-1;
+  for(let i=0;i<dates.length;i++){ if(dates[i]>=tD){targetIdx=i;break;} }
+  const tT = Math.max((expiryEnd-dates[targetIdx])/(365*24*3600*1000),0);
+  const targetVals = strikes.map(K => round2(bs(tSpot,K,tT,r,sig,type)));
+  
+  // Add target spot dots as extra datasets
+  strikes.forEach((K,i)=>{
+    const col = PALETTE[i%PALETTE.length];
+    const dotData = dates.map((_,j)=> j===targetIdx ? targetVals[i] : null);
+    datasets[i].targetVal = targetVals[i];
+    datasets.push({
+      dataset:{
+        label:'_target_'+K,
+        data: dotData,
+        borderColor: col,
+        backgroundColor: col,
+        pointRadius: dates.map((_,j)=>j===targetIdx?7:0),
+        pointStyle:'star',
+        showLine:false,
+        hidden:false,
+      }
+    });
+  });
+  
+  return {labels, datasets, strikes, expiry:expiryEnd, targetIdx,
+          targetDate:dates[targetIdx], tSpot};
 }
 
 function round2(v){ return Math.round(v*100)/100; }
@@ -288,7 +323,7 @@ function refresh(){
 
   const result = computeCurves();
   if(!result){ if(chart){chart.destroy();chart=null;} return; }
-  const {labels, datasets} = result;
+  const {labels, datasets, targetIdx, targetDate, tSpot} = result;
 
   const yLabel = st.ymode==='pct' ? '% of entry value' : 'Option value (₹)';
   const yTickFn = st.ymode==='pct'
@@ -306,8 +341,24 @@ function refresh(){
       maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
+        annotation:{
+          annotations:{
+            tLine:{
+              type:'line', xMin:targetIdx, xMax:targetIdx,
+              borderColor:'rgba(255,255,255,0.35)', borderWidth:1.5,
+              borderDash:[5,4],
+              label:{
+                display:true, position:'start',
+                content:'Target: ₹'+Number(tSpot).toLocaleString('en-IN'),
+                color:'#94A3B8', font:{size:10},
+                backgroundColor:'rgba(13,30,51,0.85)'
+              }
+            }
+          }
+        },
         legend: {
-          labels: { color:'#94A3B8', usePointStyle:true, pointStyleWidth:10,
+          labels: { filter: item => !item.text.startsWith('_target_'),
+                    color:'#94A3B8', usePointStyle:true, pointStyleWidth:10,
                     boxHeight:6, font:{size:11} }
         },
         tooltip: {
@@ -374,6 +425,14 @@ function buildTable(datasets){
         <div style="font-size:10px;color:#475569;margin-right:4px">At expiry</div>
         <div class="val-exp">₹${d.expiryVal.toFixed(2)}</div>
         <div class="val-decay" style="min-width:80px;text-align:right">${decay} change</div>
+        <div style="margin-left:12px;padding-left:12px;border-left:1px solid #1E3A5F;font-size:11px;color:#94A3B8">
+          Target scenario&nbsp;
+          <span style="font-family:monospace;color:${d.targetVal>d.todayVal?'#10B981':'#F59E0B'}">
+            ₹${d.targetVal??'—'}
+          </span>
+          ${d.targetVal!=null&&d.todayVal>0?
+            '<span style="color:#475569"> ('+((d.targetVal-d.todayVal)/d.todayVal*100).toFixed(0)+'%)</span>':''}
+        </div>
       </div>`;
   });
 }
@@ -418,6 +477,12 @@ async function fetchLive(){
         document.getElementById('v-expiry').textContent = chain.expiry;
         document.getElementById('pill-exp').style.display='flex';
       }
+    }
+
+    // default target date to expiry when live data loads
+    if(!st.targetDate && chain.expiry){
+      const parsed=new Date(chain.expiry.replace(/-/g,' '));
+      if(!isNaN(parsed)) document.getElementById('i-tdate').value=parsed.toISOString().split('T')[0];
     }
 
     if(chain.error){
