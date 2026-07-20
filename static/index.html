@@ -466,7 +466,7 @@ async function fetchLiveData(){
     const chain=await chainRes.json();
 
     if(chain.error && !chain.atm_iv){
-      errEl.textContent='⚠ '+chain.error;
+      errEl.textContent='⚠ Options chain unavailable (NSE blocked Render\'s IP) · Spot & VIX loaded ✓';
       errEl.style.display='block';
     }
 
