@@ -3,588 +3,447 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Option P&L Surface</title>
+<title>Option Value Curves</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* ── Reset & base ──────────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0}
-body{
-  background:#09162A;color:#E2E8F0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  padding:16px;min-height:100vh;font-size:13px;
-}
+body{background:#09162A;color:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:16px;min-height:100vh;font-size:13px}
+h1{font-size:17px;font-weight:700;margin-bottom:3px}
+.sub{font-size:11px;color:#64748B;margin-bottom:12px}
 
-/* ── Header ────────────────────────────────────────────────────────── */
-.hdr{margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.hdr-left h1{font-size:17px;font-weight:700;margin-bottom:3px}
-.hdr-left p{font-size:11px;color:#64748B}
+/* Live bar */
+.live-bar{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:6px;padding:5px 10px}
+.pill .lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em}
+.pill .val{font-family:monospace;font-size:14px;font-weight:700;color:#CBD5E1}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.open{background:#10B981;box-shadow:0 0 5px #10B981}.dot.closed{background:#EF4444}.dot.unknown{background:#64748B}
+.spacer{flex:1}
+.btn{padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.12s}
+.btn-live{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:#10B981}
+.btn-live:hover{background:rgba(16,185,129,0.22)}
+.btn-live:disabled{opacity:.4;cursor:not-allowed}
+.live-ts{font-size:10px;color:#475569}
+.live-err{font-size:10px;color:#F59E0B;max-width:300px;line-height:1.4}
 
-/* ── Live data bar ─────────────────────────────────────────────────── */
-.live-bar{
-  background:rgba(255,255,255,0.03);
-  border:1px solid #1E3A5F;border-radius:10px;
-  padding:10px 14px;margin-bottom:12px;
-  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-}
-.live-pill{
-  display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;
-  border-radius:6px;padding:5px 10px;
-}
-.live-pill .plbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
-.live-pill .pval{font-family:monospace;font-size:14px;font-weight:700;color:#CBD5E1}
-.live-pill .pval.green{color:#10B981}
-.live-pill .pval.amber{color:#F59E0B}
-
-.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-.status-dot.open{background:#10B981;box-shadow:0 0 6px #10B981}
-.status-dot.closed{background:#EF4444}
-.status-dot.unknown{background:#64748B}
-
-.live-spacer{flex:1}
-
-.btn-live{
-  padding:7px 16px;
-  background:rgba(16,185,129,0.12);
-  border:1px solid rgba(16,185,129,0.35);
-  border-radius:7px;cursor:pointer;
-  color:#10B981;font-size:12px;font-weight:600;font-family:inherit;
-  transition:.15s;white-space:nowrap;
-}
-.btn-live:hover{background:rgba(16,185,129,0.2)}
-.btn-live:disabled{opacity:.5;cursor:not-allowed}
-.btn-live.loading{color:#64748B;border-color:#1E3A5F}
-
-.live-status{font-size:10px;color:#475569;white-space:nowrap}
-.live-error{font-size:10px;color:#F59E0B;max-width:320px;line-height:1.4}
-
-/* ── Controls grid ─────────────────────────────────────────────────── */
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:7px}
-.g3{display:grid;grid-template-columns:1fr 1fr 2fr;gap:7px;margin-bottom:10px}
+/* Controls */
+.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:7px}
 .ctrl{background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:7px;padding:7px 9px}
 .ctrl label{display:block;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
-.ctrl input{width:100%;background:transparent;border:none;outline:none;color:#E2E8F0;font-size:14px;font-family:monospace;font-weight:700}
-.ctrl input.live-updated{color:#10B981;transition:color 1.5s}
+.ctrl input,.ctrl select{width:100%;background:transparent;border:none;outline:none;color:#E2E8F0;font-size:13px;font-family:monospace;font-weight:700}
+.ctrl input.updated{color:#10B981;transition:color 1.5s}
 
-/* ── Toggle buttons ────────────────────────────────────────────────── */
-.toggles{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap}
+/* Toggles */
+.row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .twrap label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px}
-.tg{display:flex;border:1px solid #1E3A5F;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.02)}
-.tg button{padding:5px 14px;background:transparent;border:none;cursor:pointer;color:#64748B;font-size:12px;font-family:inherit;transition:.12s}
+.tg{display:flex;border:1px solid #1E3A5F;border-radius:6px;overflow:hidden}
+.tg button{padding:5px 12px;background:transparent;border:none;cursor:pointer;color:#64748B;font-size:12px;font-family:inherit;transition:.12s}
 .tg button.on{background:#1E3A5F;color:#F59E0B;font-weight:600}
-.toggle-hint{flex:1;font-size:10px;color:#334155;padding-bottom:3px;text-align:right;line-height:1.5}
 
-/* ── Info cards ────────────────────────────────────────────────────── */
-.irow{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
-.ic{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:7px;padding:9px 11px}
-.ic .lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
-.ic .val{font-size:16px;font-weight:700;font-family:monospace;color:#CBD5E1}
+/* Strike pills */
+.strike-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.strike-row label{font-size:10px;color:#475569}
+.spill{padding:4px 10px;border-radius:20px;border:1px solid #1E3A5F;background:transparent;color:#64748B;font-size:11px;font-family:monospace;cursor:pointer;transition:.12s}
+.spill.on{background:#1E3A5F;color:#E2E8F0;border-color:#334E68}
+.spill.atm{border-color:#F59E0B;color:#F59E0B}
+.spill.atm.on{background:rgba(245,158,11,0.15)}
 
-/* ── Canvas ────────────────────────────────────────────────────────── */
-.cwrap{position:relative;cursor:crosshair;margin-bottom:8px}
-canvas{display:block;width:100%;border-radius:7px;border:1px solid #1E3A5F}
+/* Chart */
+.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:10px;padding:16px;margin-bottom:10px;position:relative}
+.chart-title{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+canvas{display:block}
 
-/* ── Tooltip ───────────────────────────────────────────────────────── */
-#tip{
-  position:fixed;background:#0D1E33;border:1px solid #2A4870;
-  border-radius:8px;padding:10px 13px;font-size:12px;
-  pointer-events:none;display:none;z-index:999;
-  min-width:170px;box-shadow:0 4px 24px rgba(0,0,0,.6)
-}
+/* Value table */
+.val-table{display:grid;gap:6px;margin-bottom:10px}
+.val-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.02);border:1px solid #1E3A5F;border-radius:7px;padding:8px 12px}
+.swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.strike-lbl{font-family:monospace;font-weight:700;min-width:60px}
+.val-now{font-family:monospace;color:#CBD5E1;min-width:70px}
+.val-exp{font-family:monospace;color:#EF4444;min-width:70px}
+.val-decay{font-size:11px;color:#475569}
+.itm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3)}
+.otm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2)}
+.atm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.3)}
 
-/* ── Footer ────────────────────────────────────────────────────────── */
-.foot{font-size:10px;color:#1E3A5F;text-align:center;line-height:1.7;margin-top:4px}
+.foot{font-size:10px;color:#1E3A5F;text-align:center;line-height:1.7}
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<div class="hdr">
-  <div class="hdr-left">
-    <h1>Option P&L Surface</h1>
-    <p>P&L heatmap across every price × time scenario · Black-Scholes · NSE Nifty</p>
-  </div>
-</div>
+<h1>Option Value Curves</h1>
+<div class="sub">How option value decays over time · spot held constant · Black-Scholes</div>
 
-<!-- Live data bar -->
+<!-- Live bar -->
 <div class="live-bar">
-  <div class="live-pill" id="pill-status">
-    <span class="status-dot unknown" id="dot-status"></span>
-    <span class="plbl">Market</span>
-    <span class="pval" id="val-status">—</span>
-  </div>
-  <div class="live-pill">
-    <span class="plbl">Nifty</span>
-    <span class="pval" id="val-spot">—</span>
-  </div>
-  <div class="live-pill">
-    <span class="plbl">VIX</span>
-    <span class="pval" id="val-vix">—</span>
-  </div>
-  <div class="live-pill">
-    <span class="plbl">ATM IV</span>
-    <span class="pval amber" id="val-iv">—</span>
-  </div>
-  <div class="live-pill" id="pill-expiry" style="display:none">
-    <span class="plbl">Expiry</span>
-    <span class="pval" id="val-expiry">—</span>
-  </div>
-  <div class="live-spacer"></div>
-  <div id="live-error" class="live-error" style="display:none"></div>
-  <span class="live-status" id="live-ts"></span>
-  <button class="btn-live" id="btn-live" onclick="fetchLiveData()">⟳ Load Live Data</button>
+  <div class="pill"><span class="dot unknown" id="dot"></span><span class="lbl">Market</span><span class="val" id="v-status">—</span></div>
+  <div class="pill"><span class="lbl">Nifty</span><span class="val" id="v-spot">—</span></div>
+  <div class="pill"><span class="lbl">VIX</span><span class="val" id="v-vix">—</span></div>
+  <div class="pill"><span class="lbl">ATM IV</span><span class="val" id="v-iv" style="color:#F59E0B">—</span></div>
+  <div class="pill" id="pill-exp" style="display:none"><span class="lbl">Expiry</span><span class="val" id="v-expiry">—</span></div>
+  <div class="spacer"></div>
+  <span class="live-err" id="live-err" style="display:none"></span>
+  <span class="live-ts" id="live-ts"></span>
+  <button class="btn btn-live" id="btn-live" onclick="fetchLive()">⟳ Load Live Data</button>
 </div>
 
-<!-- Input controls -->
-<div class="g4">
-  <div class="ctrl"><label>Spot / CMP (₹)</label><input id="i-spot"    type="number" value="24300" step="50"></div>
-  <div class="ctrl"><label>Strike (₹)</label>     <input id="i-strike"  type="number" value="24300" step="50"></div>
-  <div class="ctrl"><label>Days to Expiry</label> <input id="i-days"    type="number" value="21"    min="1" max="90"></div>
-  <div class="ctrl"><label>IV %</label>           <input id="i-iv"      type="number" value="15"    min="3" max="80" step="0.5"></div>
-</div>
-<div class="g3">
-  <div class="ctrl"><label>Lot Size</label>       <input id="i-lotsize" type="number" value="75"    min="1"></div>
-  <div class="ctrl"><label>Lots</label>           <input id="i-lots"    type="number" value="1"     min="1" max="100"></div>
-  <div class="ctrl"><label>Price Range Shown (±%)</label><input id="i-range" type="number" value="18" min="5" max="30" step="1"></div>
+<!-- Controls -->
+<div class="controls">
+  <div class="ctrl"><label>Spot / CMP (₹)</label><input id="i-spot" type="number" value="24300" step="50" oninput="onInput('spot',this.value)"></div>
+  <div class="ctrl"><label>Centre Strike (₹)</label><input id="i-strike" type="number" value="24300" step="50" oninput="onInput('strike',this.value)"></div>
+  <div class="ctrl"><label>Expiry Date</label><input id="i-expiry" type="date" oninput="onInput('expiry',this.value)"></div>
+  <div class="ctrl"><label>IV %</label><input id="i-iv" type="number" value="15" min="3" max="80" step="0.5" oninput="onInput('iv',this.value)"></div>
+  <div class="ctrl"><label>Strike Step (₹)</label><input id="i-step" type="number" value="50" min="10" step="10" oninput="onInput('step',this.value)"></div>
+  <div class="ctrl"><label>Risk-free Rate %</label><input id="i-rate" type="number" value="6.5" min="0" max="20" step="0.1" oninput="onInput('rate',this.value)"></div>
 </div>
 
 <!-- Toggles -->
-<div class="toggles">
+<div class="row">
   <div class="twrap">
     <label>Option Type</label>
     <div class="tg">
-      <button id="btn-call" onclick="setOpt('call')">▲ Call</button>
-      <button id="btn-put"  class="on" onclick="setOpt('put')">▼ Put</button>
+      <button id="btn-call" onclick="setType('call')">▲ Call</button>
+      <button id="btn-put" class="on" onclick="setType('put')">▼ Put</button>
     </div>
   </div>
   <div class="twrap">
-    <label>Perspective</label>
+    <label>Y Axis</label>
     <div class="tg">
-      <button id="btn-buyer"  class="on" onclick="setPersp('buyer')">Buyer</button>
-      <button id="btn-seller" onclick="setPersp('seller')">Seller</button>
+      <button id="btn-value" class="on" onclick="setYMode('value')">Value (₹)</button>
+      <button id="btn-pct" onclick="setYMode('pct')">% of Today's Value</button>
     </div>
   </div>
-  <div class="toggle-hint">
-    ⊙ = entry point today &nbsp;·&nbsp; dashed line = breakeven &nbsp;·&nbsp; hover to inspect any cell
-  </div>
 </div>
 
-<!-- Info cards -->
-<div class="irow">
-  <div class="ic"><div class="lbl">Entry Premium</div><div class="val" id="i-entry">—</div></div>
-  <div class="ic"><div class="lbl">Total Capital</div><div class="val" id="i-cap">—</div></div>
-  <div class="ic"><div class="lbl">Breakeven at Expiry</div><div class="val" id="i-be">—</div></div>
-  <div class="ic"><div class="lbl" id="ml-lbl">Max Loss</div><div class="val" id="i-ml">—</div></div>
+<!-- Strike selector -->
+<div class="strike-row">
+  <label>Strikes to show:</label>
+  <div id="strike-pills"></div>
 </div>
 
-<!-- Heatmap canvas -->
-<div class="cwrap"><canvas id="hm"></canvas></div>
+<!-- Chart -->
+<div class="chart-wrap">
+  <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label">24300</span></div>
+  <canvas id="chart" height="320"></canvas>
+</div>
 
-<!-- Tooltip -->
-<div id="tip"></div>
+<!-- Value summary table -->
+<div class="val-table" id="val-table"></div>
 
-<!-- Footer -->
 <div class="foot">
-  Black-Scholes model · Risk-free rate 6.5% · ⊙ = today at spot price · White dashed = breakeven<br>
-  Green = profit &nbsp;·&nbsp; Red = loss &nbsp;·&nbsp; Colour intensity = magnitude &nbsp;·&nbsp; Data: nselib + yfinance (free)
+  Black-Scholes · spot assumed constant · each curve = one strike price<br>
+  Value at expiry = intrinsic value only (time value = 0)
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════════
-// BLACK-SCHOLES MATH
-// ═══════════════════════════════════════════════════════════════════════
+// ── Black-Scholes ──────────────────────────────────────────────────────
 function ncdf(x){
   const a=[0.254829592,-0.284496736,1.421413741,-1.453152027,1.061405429],p=0.3275911;
   const s=x<0?-1:1; x=Math.abs(x)/Math.SQRT2;
   const t=1/(1+p*x);
-  const y=((((a[4]*t+a[3])*t+a[2])*t+a[1])*t+a[0])*t;
-  return .5*(1+s*(1-y*Math.exp(-x*x)));
+  return .5*(1+s*(1-(((((a[4]*t+a[3])*t+a[2])*t+a[1])*t+a[0])*t)*Math.exp(-x*x)));
 }
 function bs(S,K,T,r,sig,type){
   if(T<=0) return Math.max(type==='call'?S-K:K-S,0);
-  const sq=sig*Math.sqrt(T);
-  const d1=(Math.log(S/K)+(r+.5*sig*sig)*T)/sq, d2=d1-sq;
+  const sq=sig*Math.sqrt(T), d1=(Math.log(S/K)+(r+.5*sig*sig)*T)/sq, d2=d1-sq;
   return type==='call'
     ? S*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2)
     : K*Math.exp(-r*T)*ncdf(-d2)-S*ncdf(-d1);
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════════════
-const R=0.065;
-let st={spot:24300,strike:24300,days:21,iv:15,lotsize:75,lots:1,range:18,type:'put',persp:'buyer'};
-let grid=[], entryPx=0, lastHv=null;
-let can, cx, W, H;
-const ML=72,MR=88,MT=16,MB=44;
+// ── State ──────────────────────────────────────────────────────────────
+// Default expiry: 21 days from today
+const _defExpiry = new Date(); _defExpiry.setDate(_defExpiry.getDate()+21);
+const _defExp = _defExpiry.toISOString().split('T')[0];
+document.getElementById('i-expiry').value = _defExp;
 
-// ═══════════════════════════════════════════════════════════════════════
-// GRID COMPUTATION
-// ═══════════════════════════════════════════════════════════════════════
-function compute(){
-  const {spot,strike,days,iv,lots,lotsize,type,persp,range}=st;
-  const sig=iv/100, PR=range/100;
-  const ROWS=Math.round(range*4);
-  entryPx=bs(spot,strike,days/365,R,sig,type);
-  grid=[];
-  for(let r=0;r<=ROWS;r++){
-    const pct=PR-(r/ROWS)*2*PR;
-    const S=spot*(1+pct);
-    const row=[];
-    for(let c=0;c<=days;c++){
-      const T=Math.max(days-c,0)/365;
-      const v=bs(S,strike,T,R,sig,type);
-      const pnl=(v-entryPx)*lots*lotsize*(persp==='seller'?-1:1);
-      row.push({v,pnl,S,pct,dLeft:days-c,r,c});
-    }
-    grid.push(row);
-  }
+let st = {spot:24300, strike:24300, expiry:_defExp, iv:15, step:50, rate:6.5,
+           type:'put', ymode:'value'};
+let activeStrikes = new Set([24100,24200,24300,24400,24500]); // default 5
+
+// Chart colours (fixed palette)
+const PALETTE = ['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA',
+                 '#38BDF8','#FB923C','#4ADE80','#E879F9','#FACC15'];
+
+let chart = null;
+
+// ── Input handling ─────────────────────────────────────────────────────
+function onInput(key, val){
+  if(key === 'expiry') st[key] = val;
+  else { const v = parseFloat(val); if(!isNaN(v) && v>0) st[key]=v; }
+  if(key === 'spot' || key === 'strike' || key === 'step') buildStrikePills();
+  refresh();
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-// COLOR MAPPING
-// ═══════════════════════════════════════════════════════════════════════
-function pnlCol(pnl,mxLoss){
-  const mxGain=mxLoss*3.5;
-  if(pnl>=0){
-    const t=Math.min(pnl/mxGain,1);
-    return `rgb(${Math.round(8+t*3)},${Math.round(45+t*148)},${Math.round(38+t*47)})`;
-  }
-  const t=Math.min(-pnl/mxLoss,1);
-  return `rgb(${Math.round(38+t*198)},${Math.round(25+t*12)},${Math.round(25+t*12)})`;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CANVAS DRAW
-// ═══════════════════════════════════════════════════════════════════════
-function draw(hv=null){
-  if(!can||!grid.length) return;
-  const {days,spot,strike,type,range}=st;
-  const ROWS=grid.length-1, PR=range/100;
-  const gW=W-ML-MR, gH=H-MT-MB;
-  const cW=gW/(days+1), cH=gH/(ROWS+1);
-  const mxLoss=Math.abs(entryPx*st.lots*st.lotsize);
-
-  cx.clearRect(0,0,W,H);
-  cx.fillStyle='#09162A'; cx.fillRect(0,0,W,H);
-
-  // Cells
-  for(let r=0;r<=ROWS;r++)
-    for(let c=0;c<=days;c++){
-      cx.fillStyle=pnlCol(grid[r][c].pnl,mxLoss);
-      cx.fillRect(ML+c*cW,MT+r*cH,cW+.5,cH+.5);
-    }
-
-  // Subtle grid lines
-  cx.lineWidth=.5; cx.setLineDash([]);
-  const yStep=Math.max(1,Math.round((ROWS)/10));
-  cx.strokeStyle='rgba(9,22,42,0.5)';
-  for(let r=0;r<=ROWS;r+=yStep){cx.beginPath();cx.moveTo(ML,MT+r*cH);cx.lineTo(ML+gW,MT+r*cH);cx.stroke();}
-  const xStep=Math.max(1,Math.round(days/7));
-  for(let c=0;c<=days;c+=xStep){cx.beginPath();cx.moveTo(ML+c*cW,MT);cx.lineTo(ML+c*cW,MT+gH);cx.stroke();}
-
-  // Current spot guide line
-  const midY=MT+ROWS/2*cH+cH/2;
-  cx.beginPath();cx.setLineDash([2,5]);cx.strokeStyle='rgba(148,163,184,0.2)';cx.lineWidth=1;
-  cx.moveTo(ML,midY);cx.lineTo(ML+gW,midY);cx.stroke();
-
-  // Today column highlight
-  cx.fillStyle='rgba(255,255,255,0.025)';cx.fillRect(ML,MT,cW,gH);
-
-  // Breakeven line
-  const beP=type==='put'?strike-entryPx:strike+entryPx;
-  const bePct=(beP-spot)/spot;
-  if(Math.abs(bePct)<=PR){
-    const beR=(PR-bePct)/(2*PR)*ROWS;
-    const beY=MT+beR*cH;
-    cx.beginPath();cx.setLineDash([5,4]);
-    cx.strokeStyle='rgba(255,255,255,0.5)';cx.lineWidth=1.5;
-    cx.moveTo(ML,beY);cx.lineTo(ML+gW,beY);cx.stroke();cx.setLineDash([]);
-    cx.fillStyle='rgba(255,255,255,0.6)';cx.font='bold 9px sans-serif';cx.textAlign='left';
-    cx.fillText('BE ₹'+Math.round(beP).toLocaleString('en-IN'),ML+4,beY-3);
-  }
-  cx.setLineDash([]);
-
-  // Hover crosshair
-  if(hv){
-    const x=ML+hv.c*cW,y=MT+hv.r*cH;
-    cx.beginPath();cx.setLineDash([2,3]);cx.strokeStyle='rgba(255,255,255,0.15)';cx.lineWidth=1;
-    cx.moveTo(x+cW/2,MT);cx.lineTo(x+cW/2,MT+gH);
-    cx.moveTo(ML,y+cH/2);cx.lineTo(ML+gW,y+cH/2);
-    cx.stroke();cx.setLineDash([]);
-    cx.strokeStyle='rgba(255,255,255,0.85)';cx.lineWidth=1.5;
-    cx.strokeRect(x+.5,y+.5,cW-1,cH-1);
-  }
-
-  // Entry marker ⊙
-  const mX=ML+cW/2, mY=MT+ROWS/2*cH+cH/2;
-  cx.beginPath();cx.arc(mX,mY,7,0,Math.PI*2);
-  cx.strokeStyle='#fff';cx.lineWidth=2;cx.stroke();
-  cx.fillStyle='rgba(255,255,255,0.2)';cx.fill();
-
-  // Y axis labels
-  cx.fillStyle='#4B5563';cx.font='10px monospace';cx.textAlign='right';
-  for(let p=-st.range;p<=st.range;p+=3){
-    const r=(PR-p/100)/(2*PR)*ROWS;
-    const y=MT+r*cH+cH/2;
-    if(y<MT||y>MT+gH) continue;
-    cx.fillText(Math.round(spot*(1+p/100)).toLocaleString('en-IN'),ML-5,y+3);
-  }
-  cx.save();cx.translate(10,MT+gH/2);cx.rotate(-Math.PI/2);
-  cx.fillStyle='#2D3E52';cx.font='10px sans-serif';cx.textAlign='center';
-  cx.fillText('Nifty Level',0,0);cx.restore();
-
-  // X axis labels
-  cx.textAlign='center';cx.fillStyle='#4B5563';cx.font='10px sans-serif';
-  const xPts=[...new Set([0,Math.round(days*.25),Math.round(days*.5),Math.round(days*.75),days])];
-  for(const c of xPts){
-    const x=ML+c*cW+cW/2;
-    const lbl=c===0?'Today':c===days?'Expiry':`D+${c}`;
-    const sub=c===0?`(${days}d left)`:c===days?'':`(${days-c}d left)`;
-    cx.fillStyle='#4B5563';cx.fillText(lbl,x,MT+gH+14);
-    if(sub){cx.fillStyle='#2D3E52';cx.fillText(sub,x,MT+gH+26);}
-  }
-  cx.fillStyle='#1A2E42';cx.fillText('← time passes →',ML+gW/2,MT+gH+39);
-
-  // Colour legend
-  const lX=W-MR+13,lY=MT,lW=15,lH=gH;
-  const lg=cx.createLinearGradient(0,lY,0,lY+lH);
-  lg.addColorStop(0,'rgb(11,193,85)');lg.addColorStop(0.3,'rgb(12,65,42)');
-  lg.addColorStop(0.5,'#112030');lg.addColorStop(0.7,'rgb(55,25,25)');lg.addColorStop(1,'rgb(236,37,37)');
-  cx.fillStyle=lg;cx.fillRect(lX,lY,lW,lH);
-  cx.strokeStyle='#1E3A5F';cx.lineWidth=1;cx.strokeRect(lX,lY,lW,lH);
-  cx.fillStyle='#475569';cx.font='9px sans-serif';cx.textAlign='left';
-  cx.fillText('Profit',lX+lW+3,lY+9);cx.fillText('0',lX+lW+3,lY+lH/2+4);cx.fillText('Loss',lX+lW+3,lY+lH-3);
-
-  // Border
-  cx.strokeStyle='#1E3A5F';cx.lineWidth=1;cx.strokeRect(ML,MT,gW,gH);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// INFO BAR
-// ═══════════════════════════════════════════════════════════════════════
-function updateInfo(){
-  const {type,persp,lots,lotsize,strike}=st;
-  const cap=entryPx*lots*lotsize;
-  const be=type==='put'?strike-entryPx:strike+entryPx;
-  document.getElementById('i-entry').textContent='₹'+entryPx.toFixed(2);
-  document.getElementById('i-cap').textContent='₹'+Math.round(cap).toLocaleString('en-IN');
-  document.getElementById('i-be').textContent='₹'+Math.round(be).toLocaleString('en-IN');
-  const ml=document.getElementById('i-ml');
-  document.getElementById('ml-lbl').textContent=persp==='buyer'?'Max Loss':'Max Profit';
-  if(persp==='buyer'){ml.textContent='−₹'+Math.round(cap).toLocaleString('en-IN');ml.style.color='#EF4444';}
-  else{ml.textContent='+₹'+Math.round(cap).toLocaleString('en-IN');ml.style.color='#10B981';}
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// HOVER TOOLTIP
-// ═══════════════════════════════════════════════════════════════════════
-function onMove(e){
-  const rect=can.getBoundingClientRect();
-  const sx=can.width/rect.width, sy=can.height/rect.height;
-  const mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
-  const ROWS=grid.length-1;
-  const gW=W-ML-MR, gH=H-MT-MB;
-  const cW=gW/(st.days+1), cH=gH/(ROWS+1);
-  const c=Math.floor((mx-ML)/cW), r=Math.floor((my-MT)/cH);
-  const tip=document.getElementById('tip');
-  if(c<0||c>st.days||r<0||r>ROWS){
-    tip.style.display='none';
-    if(lastHv){lastHv=null;draw(null);}
-    return;
-  }
-  lastHv={r,c};
-  const cell=grid[r][c];
-  const mxLoss=Math.abs(entryPx*st.lots*st.lotsize);
-  const pctRet=mxLoss?(cell.pnl/mxLoss*100):0;
-  const pc=cell.pnl>=0?'#10B981':'#EF4444', ps=cell.pnl>=0?'+':'';
-  const tw=175;
-  let tx=e.clientX+15, ty=e.clientY-75;
-  if(tx+tw>window.innerWidth) tx=e.clientX-tw-10;
-  if(ty<0) ty=e.clientY+12;
-  tip.style.cssText=`display:block;left:${tx}px;top:${ty}px;position:fixed;` +
-    `background:#0D1E33;border:1px solid #2A4870;border-radius:8px;` +
-    `padding:10px 13px;font-size:12px;pointer-events:none;z-index:999;` +
-    `min-width:${tw}px;box-shadow:0 4px 24px rgba(0,0,0,.6)`;
-  tip.innerHTML=
-    `<div style="color:#64748B;font-size:10px;margin-bottom:5px">` +
-      `Day ${c} &nbsp;·&nbsp; <b style="color:#94A3B8">${cell.dLeft===0?'Expiry':cell.dLeft+'d remaining'}</b>` +
-    `</div>`+
-    `<div style="margin-bottom:3px"><span style="color:#64748B">Nifty: </span>`+
-      `<span style="color:#E2E8F0;font-family:monospace;font-weight:700">₹${Math.round(cell.S).toLocaleString('en-IN')}</span>`+
-      `<span style="color:${cell.pct>=0?'#10B981':'#EF4444'};font-size:10px"> (${cell.pct>=0?'+':''}${(cell.pct*100).toFixed(1)}%)</span>`+
-    `</div>`+
-    `<div style="margin-bottom:7px"><span style="color:#64748B">Option: </span>`+
-      `<span style="color:#F59E0B;font-family:monospace;font-weight:700">₹${cell.v.toFixed(2)}</span></div>`+
-    `<div style="font-size:16px;font-weight:700;font-family:monospace;color:${pc}">${ps}₹${Math.abs(Math.round(cell.pnl)).toLocaleString('en-IN')}</div>`+
-    `<div style="font-size:10px;color:#475569;margin-top:1px">${ps}${Math.abs(pctRet).toFixed(0)}% of premium</div>`;
-  draw({r,c});
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// LIVE DATA FETCH
-// ═══════════════════════════════════════════════════════════════════════
-function setLivePill(id, value, cls=''){
-  const el=document.getElementById(id);
-  if(el){el.textContent=value; el.className='pval'+(cls?' '+cls:'');}
-}
-
-async function fetchLiveData(){
-  const btn=document.getElementById('btn-live');
-  const errEl=document.getElementById('live-error');
-  btn.disabled=true; btn.textContent='⟳ Fetching…'; btn.classList.add('loading');
-  errEl.style.display='none';
-
-  try{
-    // Fetch spot + VIX
-    const mktRes=await fetch('/api/market');
-    const mkt=await mktRes.json();
-
-    if(mkt.spot){
-      setLivePill('val-spot','₹'+mkt.spot.toLocaleString('en-IN'));
-      flashUpdate('i-spot', mkt.spot);
-    }
-    if(mkt.vix){
-      const vixLevel=mkt.vix<13?'green':mkt.vix<20?'amber':'';
-      setLivePill('val-vix',mkt.vix.toFixed(1),vixLevel);
-    }
-
-    // Market status
-    const dot=document.getElementById('dot-status');
-    const statusEl=document.getElementById('val-status');
-    if(mkt.market_open){
-      dot.className='status-dot open';
-      statusEl.textContent='Open';
-      statusEl.style.color='#10B981';
-    } else {
-      dot.className='status-dot closed';
-      statusEl.textContent='Closed';
-      statusEl.style.color='#EF4444';
-    }
-
-    // Fetch options chain
-    const chainRes=await fetch('/api/chain?symbol=NIFTY');
-    const chain=await chainRes.json();
-
-    if(chain.error && !chain.atm_iv){
-      errEl.textContent='⚠ Options chain unavailable (NSE blocked Render\'s IP) · Spot & VIX loaded ✓';
-      errEl.style.display='block';
-    }
-
-    if(chain.spot){
-      flashUpdate('i-spot', chain.spot); // chain spot is more precise
-      setLivePill('val-spot','₹'+chain.spot.toLocaleString('en-IN'));
-    }
-
-    if(chain.atm_iv){
-      setLivePill('val-iv', chain.atm_iv.toFixed(1)+'%', 'amber');
-      flashUpdate('i-iv', chain.atm_iv);
-    }
-
-    if(chain.expiry){
-      document.getElementById('val-expiry').textContent=chain.expiry;
-      document.getElementById('pill-expiry').style.display='flex';
-
-      // Calculate days to expiry from expiry string
-      const days=calcDaysToExpiry(chain.expiry);
-      if(days!==null && days>0){
-        flashUpdate('i-days', days);
-      }
-    }
-
-    // Strike: default to ATM
-    if(chain.atm_strike){
-      flashUpdate('i-strike', chain.atm_strike);
-    }
-
-    // Update timestamp
-    const now=new Date();
-    document.getElementById('live-ts').textContent=
-      'Updated '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
-
-    refresh();
-
-  } catch(e){
-    errEl.textContent='⚠ Could not reach data server. Is the app running?';
-    errEl.style.display='block';
-  } finally{
-    btn.disabled=false; btn.textContent='⟳ Load Live Data'; btn.classList.remove('loading');
-  }
-}
-
-// Flash an input green to signal live update
-function flashUpdate(inputId, value){
-  const el=document.getElementById(inputId);
-  if(!el) return;
-  el.value=value;
-  el.classList.add('live-updated');
-  // Update state
-  const key=inputId.replace('i-','');
-  const keyMap={'spot':'spot','strike':'strike','days':'days','iv':'iv','lotsize':'lotsize','lots':'lots'};
-  if(keyMap[key]) st[keyMap[key]]=parseFloat(value);
-  setTimeout(()=>el.classList.remove('live-updated'), 2000);
-}
-
-// Parse expiry date string to days remaining
-function calcDaysToExpiry(expiryStr){
-  try{
-    // Formats: "25-Jul-2024", "2024-07-25", "25 Jul 2024"
-    const d=new Date(expiryStr.replace(/-/g,' '));
-    const today=new Date(); today.setHours(0,0,0,0);
-    const diff=Math.ceil((d-today)/(86400000));
-    return diff>0?diff:null;
-  } catch(e){ return null; }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CONTROLS
-// ═══════════════════════════════════════════════════════════════════════
-function setOpt(t){
+function setType(t){
   st.type=t;
   document.getElementById('btn-call').classList.toggle('on',t==='call');
   document.getElementById('btn-put').classList.toggle('on',t==='put');
   refresh();
 }
-function setPersp(p){
-  st.persp=p;
-  document.getElementById('btn-buyer').classList.toggle('on',p==='buyer');
-  document.getElementById('btn-seller').classList.toggle('on',p==='seller');
+function setYMode(m){
+  st.ymode=m;
+  document.getElementById('btn-value').classList.toggle('on',m==='value');
+  document.getElementById('btn-pct').classList.toggle('on',m==='pct');
   refresh();
 }
 
-function bindInputs(){
-  const map={'i-spot':'spot','i-strike':'strike','i-days':'days','i-iv':'iv','i-lotsize':'lotsize','i-lots':'lots','i-range':'range'};
-  for(const[id,k] of Object.entries(map))
-    document.getElementById(id).addEventListener('input',function(){
-      const v=parseFloat(this.value);
-      if(v>0){st[k]=v; refresh();}
-    });
-}
+// ── Strike pills ──────────────────────────────────────────────────────
+function buildStrikePills(){
+  const {strike, step} = st;
+  const atm = Math.round(strike/step)*step;
+  const candidates = [-2,-1,0,1,2].map(i => atm + i*step);
 
-// ═══════════════════════════════════════════════════════════════════════
-// CANVAS SETUP
-// ═══════════════════════════════════════════════════════════════════════
-function resize(){
-  can=document.getElementById('hm'); cx=can.getContext('2d');
-  W=can.parentElement.clientWidth;
-  H=Math.max(280,Math.round(W*.5));
-  can.width=W; can.height=H;
-}
+  // Reset activeStrikes to all 5 whenever centre/step changes
+  activeStrikes = new Set(candidates);
 
-function refresh(){compute();draw(lastHv);updateInfo();}
-
-// ═══════════════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════════════
-window.addEventListener('load',()=>{
-  resize(); bindInputs();
-  can.addEventListener('mousemove',onMove);
-  can.addEventListener('mouseleave',()=>{
-    document.getElementById('tip').style.display='none';
-    lastHv=null; draw(null);
+  const container = document.getElementById('strike-pills');
+  container.innerHTML = '';
+  candidates.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'spill on' + (s===atm?' atm':'');
+    btn.textContent = '₹'+s.toLocaleString('en-IN');
+    btn.dataset.strike = s;
+    btn.onclick = () => {
+      if(activeStrikes.has(s)){ if(activeStrikes.size>1) activeStrikes.delete(s); }
+      else activeStrikes.add(s);
+      btn.classList.toggle('on', activeStrikes.has(s));
+      refresh();
+    };
+    container.appendChild(btn);
   });
-  refresh();
-});
-window.addEventListener('resize',()=>{resize();refresh();});
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────
+function parseDates(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const expiry = new Date(st.expiry); expiry.setHours(0,0,0,0);
+  if(expiry <= today) return {dates:[], labels:[]};
+  const dates=[], labels=[];
+  const d = new Date(today);
+  const fmt = new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short'});
+  while(d <= expiry){
+    dates.push(new Date(d));
+    labels.push(fmt.format(d));
+    d.setDate(d.getDate()+1);
+  }
+  return {dates, labels, expiry, today};
+}
+
+function daysLeft(date, expiry){
+  return Math.max((expiry-date)/(86400000), 0);
+}
+
+// ── Compute curves ────────────────────────────────────────────────────
+function computeCurves(){
+  const {dates, labels, expiry} = parseDates();
+  if(!dates.length) return null;
+  const {spot, iv, rate, type} = st;
+  const sig = iv/100, r = rate/100;
+  const strikes = [...activeStrikes].sort((a,b)=>a-b);
+
+  const datasets = strikes.map((K, i) => {
+    const values = dates.map(d => {
+      const T = daysLeft(d, expiry) / 365;
+      const raw = bs(spot, K, T, r, sig, type);
+      return raw;
+    });
+    const today0 = values[0];
+    const data = st.ymode==='pct'
+      ? values.map(v => today0>0 ? round2(v/today0*100) : 0)
+      : values.map(round2);
+
+    const atm = Math.round(st.strike/st.step)*st.step;
+    const isATM = K === atm;
+    const col = PALETTE[i % PALETTE.length];
+
+    return {K, data, todayVal: today0, expiryVal: values[values.length-1],
+            color: col, isATM,
+            dataset: {
+              label: '₹'+K.toLocaleString('en-IN'),
+              data,
+              borderColor: col,
+              backgroundColor: col+'18',
+              borderWidth: isATM ? 3 : 1.5,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              tension: 0.3,
+              fill: false,
+              borderDash: isATM ? [] : []
+            }};
+  });
+  return {labels, datasets, strikes, expiry};
+}
+
+function round2(v){ return Math.round(v*100)/100; }
+
+// ── Draw chart ────────────────────────────────────────────────────────
+function refresh(){
+  document.getElementById('spot-label').textContent =
+    Number(st.spot).toLocaleString('en-IN');
+
+  const result = computeCurves();
+  if(!result){ if(chart){chart.destroy();chart=null;} return; }
+  const {labels, datasets} = result;
+
+  const yLabel = st.ymode==='pct' ? '% of entry value' : 'Option value (₹)';
+  const yTickFn = st.ymode==='pct'
+    ? v => v+'%'
+    : v => '₹'+v;
+
+  if(chart){ chart.destroy(); }
+
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: datasets.map(d=>d.dataset) },
+    options: {
+      responsive: true,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: {
+          labels: { color:'#94A3B8', usePointStyle:true, pointStyleWidth:10,
+                    boxHeight:6, font:{size:11} }
+        },
+        tooltip: {
+          backgroundColor:'#0D1E33',
+          borderColor:'#2A4870',
+          borderWidth:1,
+          titleColor:'#94A3B8',
+          bodyColor:'#E2E8F0',
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const lbl = st.ymode==='pct' ? v.toFixed(1)+'%' : '₹'+v.toFixed(2);
+              return ' '+ctx.dataset.label+': '+lbl;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color:'#475569', maxTicksLimit:10, maxRotation:0,
+                   font:{size:10} },
+          grid: { color:'#152035' },
+          border: { color:'#1E3A5F' }
+        },
+        y: {
+          ticks: { color:'#475569', callback: yTickFn, font:{size:10} },
+          grid: { color:'#152035' },
+          border: { color:'#1E3A5F' },
+          title: { display:true, text:yLabel, color:'#334155', font:{size:10} }
+        }
+      }
+    }
+  });
+
+  buildTable(datasets);
+}
+
+// ── Value summary table ───────────────────────────────────────────────
+function buildTable(datasets){
+  const {spot, type, strike, step} = st;
+  const atm = Math.round(strike/step)*step;
+  const tbl = document.getElementById('val-table');
+  tbl.innerHTML = '';
+
+  datasets.forEach(d => {
+    const isITM = type==='call' ? d.K < spot : d.K > spot;
+    const isATM = d.K === atm;
+    const badge = isATM
+      ? '<span class="atm-badge">ATM</span>'
+      : isITM ? '<span class="itm-badge">ITM</span>' : '<span class="otm-badge">OTM</span>';
+    const decay = d.todayVal > 0
+      ? ((d.expiryVal - d.todayVal)/d.todayVal*100).toFixed(1)+'%'
+      : '—';
+
+    tbl.innerHTML += `
+      <div class="val-row">
+        <div class="swatch" style="background:${d.color}"></div>
+        <div class="strike-lbl">₹${d.K.toLocaleString('en-IN')}</div>
+        ${badge}
+        <div style="flex:1"></div>
+        <div style="font-size:10px;color:#475569;margin-right:4px">Today</div>
+        <div class="val-now">₹${d.todayVal.toFixed(2)}</div>
+        <div style="font-size:10px;color:#475569;margin-right:4px">At expiry</div>
+        <div class="val-exp">₹${d.expiryVal.toFixed(2)}</div>
+        <div class="val-decay" style="min-width:80px;text-align:right">${decay} change</div>
+      </div>`;
+  });
+}
+
+// ── Live data fetch ───────────────────────────────────────────────────
+async function fetchLive(){
+  const btn=document.getElementById('btn-live');
+  const errEl=document.getElementById('live-err');
+  btn.disabled=true; btn.textContent='⟳ Fetching…';
+  errEl.style.display='none';
+  try{
+    const [mkt, chain] = await Promise.all([
+      fetch('/api/market').then(r=>r.json()),
+      fetch('/api/chain?symbol=NIFTY').then(r=>r.json())
+    ]);
+
+    // Status dot
+    const dot=document.getElementById('dot');
+    dot.className='dot '+(mkt.market_open?'open':'closed');
+    document.getElementById('v-status').textContent=mkt.market_open?'Open':'Closed';
+    document.getElementById('v-status').style.color=mkt.market_open?'#10B981':'#EF4444';
+
+    if(mkt.spot){ document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN'); }
+    if(mkt.vix){  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1); }
+
+    // Use chain data if available
+    const spot = chain.spot || mkt.spot;
+    if(spot){ flashSet('i-spot', spot, 'spot'); }
+
+    if(chain.atm_iv){
+      document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%';
+      flashSet('i-iv', chain.atm_iv, 'iv');
+    }
+    if(chain.atm_strike){ flashSet('i-strike', chain.atm_strike, 'strike'); }
+
+    if(chain.expiry){
+      // Parse expiry string → YYYY-MM-DD for date input
+      const parsed = new Date(chain.expiry.replace(/-/g,' '));
+      if(!isNaN(parsed)){
+        const iso = parsed.toISOString().split('T')[0];
+        flashSet('i-expiry', iso, 'expiry');
+        document.getElementById('v-expiry').textContent = chain.expiry;
+        document.getElementById('pill-exp').style.display='flex';
+      }
+    }
+
+    if(chain.error){
+      errEl.textContent='⚠ '+chain.error;
+      errEl.style.display='block';
+    }
+
+    document.getElementById('live-ts').textContent =
+      'Updated '+new Date().toLocaleTimeString('en-IN',
+        {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+    buildStrikePills();
+    refresh();
+
+  } catch(e){
+    errEl.textContent='⚠ Could not reach server.';
+    errEl.style.display='block';
+  } finally{
+    btn.disabled=false; btn.textContent='⟳ Load Live Data';
+  }
+}
+
+function flashSet(id, val, key){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.value = val;
+  st[key] = typeof val==='string' ? val : parseFloat(val);
+  el.classList.add('updated');
+  setTimeout(()=>el.classList.remove('updated'), 2000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+buildStrikePills();
+refresh();
 </script>
 </body>
 </html>
