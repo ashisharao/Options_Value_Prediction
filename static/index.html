@@ -3,77 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Option Value Curves</title>
+<title>Option Strike Selector</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#09162A;color:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:10px;min-height:100vh;font-size:13px}
-h1{font-size:17px;font-weight:700;margin-bottom:3px}
-.sub{font-size:11px;color:#64748B;margin-bottom:12px}
+body{background:#09162A;color:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:10px;font-size:13px}
+h1{font-size:16px;font-weight:700;margin-bottom:2px}
+.sub{font-size:11px;color:#64748B;margin-bottom:10px}
 
 /* Live bar */
-.live-bar{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:6px;padding:5px 10px}
+.live-bar{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:6px;padding:4px 8px}
 .pill .lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em}
-.pill .val{font-family:monospace;font-size:14px;font-weight:700;color:#CBD5E1}
-.dot{width:7px;height:7px;border-radius:50%}
+.pill .val{font-family:monospace;font-size:13px;font-weight:700;color:#CBD5E1}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .dot.open{background:#10B981;box-shadow:0 0 5px #10B981}.dot.closed{background:#EF4444}.dot.unknown{background:#64748B}
 .spacer{flex:1}
-.btn{padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.12s}
+.btn{padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.12s}
 .btn-live{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:#10B981}
 .btn-live:hover{background:rgba(16,185,129,0.22)}
 .btn-live:disabled{opacity:.4;cursor:not-allowed}
 .live-ts{font-size:10px;color:#475569}
-.live-err{font-size:10px;color:#F59E0B;max-width:300px;line-height:1.4}
+.live-err{font-size:10px;color:#F59E0B;max-width:280px;line-height:1.4}
 
 /* Controls */
-.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:7px}
-.ctrl{background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:7px;padding:7px 9px}
-.ctrl label{display:block;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
-.ctrl input,.ctrl select{width:100%;background:transparent;border:none;outline:none;color:#E2E8F0;font-size:13px;font-family:monospace;font-weight:700}
+.section-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;margin-top:8px}
+.cg{display:grid;gap:6px;margin-bottom:6px}
+.cg-6{grid-template-columns:repeat(6,1fr)}
+.cg-4{grid-template-columns:repeat(4,1fr)}
+.ctrl{background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:7px;padding:6px 8px}
+.ctrl label{display:block;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.ctrl input{width:100%;background:transparent;border:none;outline:none;color:#E2E8F0;font-size:13px;font-family:monospace;font-weight:700}
+.ctrl input::placeholder{color:#334155;font-weight:400}
 .ctrl input.updated{color:#10B981;transition:color 1.5s}
 
 /* Toggles */
-.row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.twrap label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.twrap label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:2px}
 .tg{display:flex;border:1px solid #1E3A5F;border-radius:6px;overflow:hidden}
-.tg button{padding:5px 12px;background:transparent;border:none;cursor:pointer;color:#64748B;font-size:12px;font-family:inherit;transition:.12s}
+.tg button{padding:4px 11px;background:transparent;border:none;cursor:pointer;color:#64748B;font-size:12px;font-family:inherit;transition:.12s}
 .tg button.on{background:#1E3A5F;color:#F59E0B;font-weight:600}
 
 /* Strike pills */
-.strike-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.strike-row label{font-size:10px;color:#475569}
-.spill{padding:4px 10px;border-radius:20px;border:1px solid #1E3A5F;background:transparent;color:#64748B;font-size:11px;font-family:monospace;cursor:pointer;transition:.12s}
-.spill.on{background:#1E3A5F;color:#E2E8F0;border-color:#334E68}
+.strike-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.strike-row .slbl{font-size:10px;color:#475569;margin-right:2px}
+.spill{padding:3px 9px;border-radius:20px;border:1px solid #1E3A5F;background:transparent;color:#64748B;font-size:11px;font-family:monospace;cursor:pointer;transition:.12s}
+.spill.on{background:#1E3A5F;color:#E2E8F0}
 .spill.atm{border-color:#F59E0B;color:#F59E0B}
-.spill.atm.on{background:rgba(245,158,11,0.15)}
+.spill.atm.on{background:rgba(245,158,11,0.12)}
 
 /* Chart */
-.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:10px;padding:10px;margin-bottom:6px;height:200px}
-.chart-title{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
-canvas{display:block}
+.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:8px;padding:10px;margin-bottom:8px;height:260px}
+.chart-title{font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 
-/* Value table */
-.val-table{display:grid;gap:6px;margin-bottom:10px}
-.val-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.02);border:1px solid #1E3A5F;border-radius:7px;padding:8px 12px}
-.swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.strike-lbl{font-family:monospace;font-weight:700;min-width:60px}
-.val-now{font-family:monospace;color:#CBD5E1;min-width:70px}
-.val-exp{font-family:monospace;color:#EF4444;min-width:70px}
-.val-decay{font-size:11px;color:#475569}
-.itm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3)}
-.otm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2)}
-.atm-badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.3)}
+/* Comparison table */
+.comp-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+.comp-table th{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em;padding:5px 8px;border-bottom:1px solid #1E3A5F;text-align:right;white-space:nowrap}
+.comp-table th:first-child{text-align:left}
+.comp-table td{padding:6px 8px;border-bottom:1px solid rgba(30,58,95,0.5);text-align:right;font-family:monospace}
+.comp-table td:first-child{text-align:left}
+.comp-table tr:hover td{background:rgba(255,255,255,0.02)}
+.comp-table tr.best-row td{background:rgba(16,185,129,0.06);border-left:2px solid #10B981}
+.comp-table tr.best-row td:first-child{border-left:2px solid #10B981}
+.badge{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-family:sans-serif}
+.badge-itm{background:rgba(16,185,129,0.15);color:#10B981}
+.badge-otm{background:rgba(239,68,68,0.1);color:#EF4444}
+.badge-atm{background:rgba(245,158,11,0.12);color:#F59E0B}
+.up{color:#10B981}.dn{color:#EF4444}.neu{color:#94A3B8}
+.best-tag{font-size:9px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:3px;margin-left:6px;font-family:sans-serif}
 
-.foot{font-size:10px;color:#1E3A5F;text-align:center;line-height:1.7}
-.chart-wrap{height:400px} 
+.foot{font-size:10px;color:#1E3A5F;text-align:center;line-height:1.7;margin-top:4px}
 </style>
 </head>
 <body>
 
-<h1>Option Value Curves</h1>
-<div class="sub">How option value decays over time · spot held constant · Black-Scholes</div>
+<h1>Option Strike Selector</h1>
+<div class="sub">Compare strikes across your bearish scenario · Black-Scholes pricing</div>
 
 <!-- Live bar -->
 <div class="live-bar">
@@ -88,8 +94,9 @@ canvas{display:block}
   <button class="btn btn-live" id="btn-live" onclick="fetchLive()">⟳ Load Live Data</button>
 </div>
 
-<!-- Controls -->
-<div class="controls">
+<!-- Market inputs -->
+<div class="section-label">Market</div>
+<div class="cg cg-6">
   <div class="ctrl"><label>Spot / CMP (₹)</label><input id="i-spot" type="number" value="24300" step="50" oninput="onInput('spot',this.value)"></div>
   <div class="ctrl"><label>Centre Strike (₹)</label><input id="i-strike" type="number" value="24300" step="50" oninput="onInput('strike',this.value)"></div>
   <div class="ctrl"><label>Expiry Date</label><input id="i-expiry" type="date" oninput="onInput('expiry',this.value)"></div>
@@ -97,15 +104,17 @@ canvas{display:block}
   <div class="ctrl"><label>Strike Step (₹)</label><input id="i-step" type="number" value="50" min="10" step="10" oninput="onInput('step',this.value)"></div>
   <div class="ctrl"><label>Risk-free Rate %</label><input id="i-rate" type="number" value="6.5" min="0" max="20" step="0.1" oninput="onInput('rate',this.value)"></div>
 </div>
-<div class="controls" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
-  <div class="ctrl"><label>Target Nifty Price (₹)</label><input id="i-tprice" type="number" value="" step="50" placeholder="e.g. 24000" oninput="onInput('targetPrice',this.value)"></div>
-  <div class="ctrl"><label>Target Date</label><input id="i-tdate" type="date" oninput="onInput('targetDate',this.value)"></div>
-  <div class="ctrl" style="background:transparent;border-color:transparent;display:flex;align-items:flex-end;padding-bottom:8px">
-    <span style="font-size:10px;color:#475569;line-height:1.5">Leave target date blank to use expiry.<br>Leave target price blank to use current spot.</span>
-  </div>
+
+<!-- Scenario inputs -->
+<div class="section-label">Your Bearish Scenario</div>
+<div class="cg cg-4">
+  <div class="ctrl"><label>Target Price — Best Case (₹)</label><input id="i-tpmin" type="number" step="50" placeholder="e.g. 23800 (optimistic)" oninput="onInput('tpMin',this.value)"></div>
+  <div class="ctrl"><label>Target Price — Base Case (₹)</label><input id="i-tpmax" type="number" step="50" placeholder="e.g. 24100 (conservative)" oninput="onInput('tpMax',this.value)"></div>
+  <div class="ctrl"><label>Move Expected By (Early)</label><input id="i-tdearly" type="date" oninput="onInput('tdEarly',this.value)"></div>
+  <div class="ctrl"><label>Move Expected By (Late)</label><input id="i-tdlate" type="date" oninput="onInput('tdLate',this.value)"></div>
 </div>
 
-<!-- Toggles -->
+<!-- Toggles + strike pills -->
 <div class="row">
   <div class="twrap">
     <label>Option Type</label>
@@ -115,32 +124,45 @@ canvas{display:block}
     </div>
   </div>
   <div class="twrap">
-    <label>Y Axis</label>
+    <label>Chart Y Axis</label>
     <div class="tg">
       <button id="btn-value" class="on" onclick="setYMode('value')">Value (₹)</button>
-      <button id="btn-pct" onclick="setYMode('pct')">% of Today's Value</button>
+      <button id="btn-pct" onclick="setYMode('pct')">% of Today</button>
     </div>
   </div>
 </div>
 
-<!-- Strike selector -->
 <div class="strike-row">
-  <label>Strikes to show:</label>
+  <span class="slbl">Strikes:</span>
   <div id="strike-pills"></div>
 </div>
 
 <!-- Chart -->
 <div class="chart-wrap">
-  <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label">24300</span></div>
-  <canvas id="chart" height="200"></canvas>
+  <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label">24300</span> · shaded = your target window</div>
+  <canvas id="chart" style="max-height:220px"></canvas>
 </div>
 
-<!-- Value summary table -->
-<div class="val-table" id="val-table"></div>
+<!-- Strike comparison table -->
+<table class="comp-table" id="comp-table">
+  <thead>
+    <tr>
+      <th>Strike</th>
+      <th>Premium Today</th>
+      <th>Breakeven</th>
+      <th>Best Case P&L</th>
+      <th>Base Case P&L</th>
+      <th>Max Loss</th>
+      <th>Best ROM %</th>
+      <th>P(Profit)</th>
+    </tr>
+  </thead>
+  <tbody id="comp-body"></tbody>
+</table>
 
 <div class="foot">
-  Black-Scholes · spot assumed constant · each curve = one strike price<br>
-  Value at expiry = intrinsic value only (time value = 0)
+  Black-Scholes · spot held constant on curves · scenario P&amp;L uses your target price + date<br>
+  Best case = optimistic price on early date · Base case = conservative price on late date · P(Profit) = N(−d₂) at expiry
 </div>
 
 <script>
@@ -158,28 +180,32 @@ function bs(S,K,T,r,sig,type){
     ? S*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2)
     : K*Math.exp(-r*T)*ncdf(-d2)-S*ncdf(-d1);
 }
+function probProfit(S,K,T,r,sig,type){
+  if(T<=0) return type==='put'?(S<K?100:0):(S>K?100:0);
+  const sq=sig*Math.sqrt(T);
+  const d2=(Math.log(S/K)+(r-.5*sig*sig)*T)/sq;
+  return r2(type==='put'?ncdf(-d2)*100:ncdf(d2)*100);
+}
+function r2(v){return Math.round(v*100)/100}
 
 // ── State ──────────────────────────────────────────────────────────────
-// Default expiry: 21 days from today
-const _defExpiry = new Date(); _defExpiry.setDate(_defExpiry.getDate()+21);
-const _defExp = _defExpiry.toISOString().split('T')[0];
-document.getElementById('i-expiry').value = _defExp;
+const _de=new Date(); _de.setDate(_de.getDate()+21);
+const _defExp=_de.toISOString().split('T')[0];
+document.getElementById('i-expiry').value=_defExp;
 
-let st = {spot:24300, strike:24300, expiry:_defExp, iv:15, step:50, rate:6.5,
-           type:'put', ymode:'value', targetPrice:null, targetDate:null};
-let activeStrikes = new Set([24100,24200,24300,24400,24500]); // default 5
+let st={spot:24300,strike:24300,expiry:_defExp,iv:15,step:50,rate:6.5,
+        type:'put',ymode:'value',
+        tpMin:null,tpMax:null,tdEarly:null,tdLate:null};
+let activeStrikes=new Set([24100,24150,24200,24250,24300,24350,24400]);
+const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#FB923C','#4ADE80'];
+let chart=null;
 
-// Chart colours (fixed palette)
-const PALETTE = ['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA',
-                 '#38BDF8','#FB923C','#4ADE80','#E879F9','#FACC15'];
-
-let chart = null;
-
-// ── Input handling ─────────────────────────────────────────────────────
-function onInput(key, val){
-  if(key === 'expiry' || key === 'targetDate') st[key] = val;
-  else { const v = parseFloat(val); if(!isNaN(v) && v>0) st[key]=v; }
-  if(key === 'spot' || key === 'strike' || key === 'step') buildStrikePills();
+// ── Inputs ─────────────────────────────────────────────────────────────
+function onInput(key,val){
+  const strKeys=['expiry','tdEarly','tdLate'];
+  if(strKeys.includes(key)) st[key]=val||null;
+  else{ const v=parseFloat(val); st[key]=(!isNaN(v)&&v>0)?v:null; }
+  if(['spot','strike','step'].includes(key)) buildStrikePills();
   refresh();
 }
 function setType(t){
@@ -197,43 +223,39 @@ function setYMode(m){
 
 // ── Strike pills ──────────────────────────────────────────────────────
 function buildStrikePills(){
-  const {strike, step} = st;
-  const atm = Math.round(strike/step)*step;
-  const candidates = [-2,-1,0,1,2].map(i => atm + i*step);
-
-  // Reset activeStrikes to all 5 whenever centre/step changes
-  activeStrikes = new Set(candidates);
-
-  const container = document.getElementById('strike-pills');
-  container.innerHTML = '';
-  candidates.forEach(s => {
-    const btn = document.createElement('button');
-    btn.className = 'spill on' + (s===atm?' atm':'');
-    btn.textContent = '₹'+s.toLocaleString('en-IN');
-    btn.dataset.strike = s;
-    btn.onclick = () => {
-      if(activeStrikes.has(s)){ if(activeStrikes.size>1) activeStrikes.delete(s); }
+  const {strike,step}=st;
+  const atm=Math.round(strike/step)*step;
+  const cands=[-3,-2,-1,0,1,2,3].map(i=>atm+i*step);
+  activeStrikes=new Set(cands);
+  const c=document.getElementById('strike-pills');
+  c.innerHTML='';
+  cands.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='spill on'+(s===atm?' atm':'');
+    b.textContent='₹'+s.toLocaleString('en-IN');
+    b.dataset.s=s;
+    b.onclick=()=>{
+      if(activeStrikes.has(s)){if(activeStrikes.size>1)activeStrikes.delete(s);}
       else activeStrikes.add(s);
-      btn.classList.toggle('on', activeStrikes.has(s));
+      b.classList.toggle('on',activeStrikes.has(s));
       refresh();
     };
-    container.appendChild(btn);
+    c.appendChild(b);
   });
 }
 
-// ── Date helpers ──────────────────────────────────────────────────────
+// ── Time helpers ──────────────────────────────────────────────────────
 function toIST(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}))}
-
 function isMktOpen(d){
-  const ist=toIST(d), day=ist.getDay(), m=ist.getHours()*60+ist.getMinutes();
-  return day>0&&day<6&&m>=555&&m<=930; // 555=9h15, 930=15h30
+  const ist=toIST(d),day=ist.getDay(),m=ist.getHours()*60+ist.getMinutes();
+  return day>0&&day<6&&m>=555&&m<=930;
 }
-
 function parseMarketSamples(){
   const now=new Date();
   const expiryEnd=new Date(st.expiry+'T15:30:00+05:30');
   if(expiryEnd<=now) return {dates:[],labels:[],expiryEnd};
-  const STEP=15*60*1000, dates=[new Date(now)], labels=['Now'];
+  const STEP=15*60*1000;
+  const dates=[new Date(now)],labels=['Now'];
   const dfmt=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'});
   const tfmt=new Intl.DateTimeFormat('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata',hour12:false});
   let cur=new Date(Math.ceil(now.getTime()/STEP)*STEP);
@@ -243,279 +265,214 @@ function parseMarketSamples(){
   }
   return {dates,labels,expiryEnd};
 }
-
-// ── Compute curves ────────────────────────────────────────────────────
-function computeCurves(){
-  const {dates, labels, expiryEnd} = parseMarketSamples();
-  if(!dates.length) return null;
-  const {spot, iv, rate, type} = st;
-  const sig = iv/100, r = rate/100;
-  const strikes = [...activeStrikes].sort((a,b)=>a-b);
-
-  const datasets = strikes.map((K, i) => {
-    const values = dates.map(d => {
-      const T = Math.max((expiryEnd-d)/(365*24*3600*1000), 0);
-      const raw = bs(spot, K, T, r, sig, type);
-      return raw;
-    });
-    const today0 = values[0];
-    const data = st.ymode==='pct'
-      ? values.map(v => today0>0 ? round2(v/today0*100) : 0)
-      : values.map(round2);
-
-    const atm = Math.round(st.strike/st.step)*st.step;
-    const isATM = K === atm;
-    const col = PALETTE[i % PALETTE.length];
-
-    return {K, data, todayVal: today0, expiryVal: values[values.length-1],
-            color: col, isATM,
-            dataset: {
-              label: '₹'+K.toLocaleString('en-IN'),
-              data,
-              borderColor: col,
-              backgroundColor: col+'18',
-              borderWidth: isATM ? 3 : 1.5,
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              tension: 0.3,
-              fill: false,
-              borderDash: isATM ? [] : []
-            }};
-  });
-  // Target scenario
-  const tDateStr = st.targetDate || st.expiry;
-  const tSpot    = st.targetPrice || spot;
-  const tD       = new Date(tDateStr+'T15:30:00+05:30');
-  let targetIdx  = dates.length-1;
-  for(let i=0;i<dates.length;i++){ if(dates[i]>=tD){targetIdx=i;break;} }
-  const tT = Math.max((expiryEnd-dates[targetIdx])/(365*24*3600*1000),0);
-  const targetVals = strikes.map(K => round2(bs(tSpot,K,tT,r,sig,type)));
-  
-  // Add target spot dots as extra datasets
-  strikes.forEach((K,i)=>{
-    const col = PALETTE[i%PALETTE.length];
-    const todayVal = datasets[i].todayVal;
-    const targetDot = st.ymode==='pct' && todayVal>0
-      ? round2(targetVals[i]/todayVal*100)
-      : targetVals[i];
-    const dotData = dates.map((_,j)=> j===targetIdx ? targetDot : null);
-    datasets[i].targetVal = targetVals[i];
-    datasets.push({
-      dataset:{
-        label:'_target_'+K,
-        data: dotData,
-        borderColor: col,
-        backgroundColor: col,
-        pointRadius: dates.map((_,j)=>j===targetIdx?7:0),
-        pointStyle:'star',
-        showLine:false,
-        hidden:false,
-      }
-    });
-  });
-  
-  return {labels, datasets, strikes, expiry:expiryEnd, targetIdx,
-          targetDate:dates[targetIdx], tSpot};
+function findIdx(dates,dateStr,end=false){
+  if(!dateStr) return end?dates.length-1:0;
+  const target=new Date(dateStr+'T'+(end?'15:30':'09:15')+':00+05:30');
+  if(end){ for(let i=dates.length-1;i>=0;i--) if(dates[i]<=target) return i; return dates.length-1; }
+  else { for(let i=0;i<dates.length;i++) if(dates[i]>=target) return i; return 0; }
 }
 
-function round2(v){ return Math.round(v*100)/100; }
+// ── Compute ───────────────────────────────────────────────────────────
+function computeAll(){
+  const {dates,labels,expiryEnd}=parseMarketSamples();
+  if(!dates.length) return null;
+  const {spot,iv,rate,type,step,strike}=st;
+  const sig=iv/100,r=rate/100;
+  const atm=Math.round(strike/step)*step;
+  const strikes=[...activeStrikes].sort((a,b)=>a-b);
+  const T_full=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
 
-// ── Draw chart ────────────────────────────────────────────────────────
+  // Scenario indices
+  const earlyIdx=findIdx(dates,st.tdEarly,false);
+  const lateIdx =findIdx(dates,st.tdLate, true);
+
+  // Curves (spot constant)
+  const datasets=strikes.map((K,i)=>{
+    const todayVal=r2(bs(spot,K,T_full,r,sig,type));
+    const values=dates.map(d=>{
+      const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
+      return r2(bs(spot,K,T,r,sig,type));
+    });
+    const data=st.ymode==='pct'
+      ?values.map(v=>todayVal>0?r2(v/todayVal*100):0)
+      :values;
+    const col=PALETTE[i%PALETTE.length];
+    const isATM=K===atm;
+
+    // Scenario values
+    const bestSpot =st.tpMin||spot, worstSpot=st.tpMax||spot;
+    const bestDate =dates[earlyIdx], worstDate=dates[lateIdx];
+    const T_best =Math.max((expiryEnd-bestDate) /(365*24*3600*1000),0);
+    const T_worst=Math.max((expiryEnd-worstDate)/(365*24*3600*1000),0);
+    const bestVal =r2(bs(bestSpot, K,T_best, r,sig,type));
+    const worstVal=r2(bs(worstSpot,K,T_worst,r,sig,type));
+    const bestPnl =r2(bestVal -todayVal);
+    const worstPnl=r2(worstVal-todayVal);
+    const bestPct =todayVal>0?r2(bestPnl /todayVal*100):0;
+    const worstPct=todayVal>0?r2(worstPnl/todayVal*100):0;
+    const breakeven=type==='put'?r2(K-todayVal):r2(K+todayVal);
+    const prob=probProfit(spot,K,T_full,r,sig,type);
+
+    return {
+      K,col,isATM,todayVal,bestVal,worstVal,
+      bestPnl,worstPnl,bestPct,worstPct,breakeven,prob,
+      dataset:{
+        label:'₹'+K.toLocaleString('en-IN'),
+        data, borderColor:col,
+        borderWidth:isATM?3:1.5,
+        pointRadius:0, pointHoverRadius:4,
+        tension:0.3, fill:false,
+        backgroundColor:col+'18',
+      }
+    };
+  });
+
+  return {labels,datasets,strikes,expiryEnd,earlyIdx,lateIdx,atm};
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────
 function refresh(){
-  document.getElementById('spot-label').textContent =
-    Number(st.spot).toLocaleString('en-IN');
+  document.getElementById('spot-label').textContent=Number(st.spot).toLocaleString('en-IN');
+  const res=computeAll();
+  if(!res){if(chart){chart.destroy();chart=null;}return;}
+  const {labels,datasets,earlyIdx,lateIdx}=res;
 
-  const result = computeCurves();
-  if(!result){ if(chart){chart.destroy();chart=null;} return; }
-  const {labels, datasets, targetIdx, targetDate, tSpot} = result;
+  const yTickFn=st.ymode==='pct'?v=>v+'%':v=>'₹'+v;
 
-  const yLabel = st.ymode==='pct' ? '% of entry value' : 'Option value (₹)';
-  const yTickFn = st.ymode==='pct'
-    ? v => v+'%'
-    : v => '₹'+v;
-
-  if(chart){ chart.destroy(); }
-
-  const ctx = document.getElementById('chart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets: datasets.map(d=>d.dataset) },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode:'index', intersect:false },
-      plugins: {
+  if(chart) chart.destroy();
+  const ctx=document.getElementById('chart').getContext('2d');
+  chart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:datasets.map(d=>d.dataset)},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
         annotation:{
           annotations:{
-            tLine:{
-              type:'line', xMin:targetIdx, xMax:targetIdx,
-              borderColor:'rgba(255,255,255,0.35)', borderWidth:1.5,
-              borderDash:[5,4],
-              label:{
-                display:true, position:'start',
-                content:'Target: ₹'+Number(tSpot).toLocaleString('en-IN'),
-                color:'#94A3B8', font:{size:10},
-                backgroundColor:'rgba(13,30,51,0.85)'
-              }
+            band:{
+              type:'box',
+              xMin:earlyIdx, xMax:lateIdx,
+              backgroundColor:'rgba(245,158,11,0.07)',
+              borderColor:'rgba(245,158,11,0.25)',
+              borderWidth:1,
+              label:{display:earlyIdx<lateIdx,content:'Target window',
+                position:{x:'center',y:'start'},
+                color:'rgba(245,158,11,0.45)',font:{size:9},
+                backgroundColor:'transparent'}
             }
           }
         },
-        legend: {
-          labels: { filter: item => !item.text.startsWith('_target_'),
-                    color:'#94A3B8', usePointStyle:true, pointStyleWidth:10,
-                    boxHeight:6, font:{size:11} }
-        },
-        tooltip: {
-          backgroundColor:'#0D1E33',
-          borderColor:'#2A4870',
-          borderWidth:1,
-          titleColor:'#94A3B8',
-          bodyColor:'#E2E8F0',
-          callbacks: {
-            title: items => labels[items[0].dataIndex],
-            label: ctx => {
-              const v = ctx.parsed.y;
-              const lbl = st.ymode==='pct' ? v.toFixed(1)+'%' : '₹'+v.toFixed(2);
-              return ' '+ctx.dataset.label+': '+lbl;
+        legend:{labels:{color:'#94A3B8',usePointStyle:true,pointStyleWidth:10,
+                         boxHeight:6,font:{size:11}}},
+        tooltip:{
+          backgroundColor:'#0D1E33',borderColor:'#2A4870',borderWidth:1,
+          titleColor:'#94A3B8',bodyColor:'#E2E8F0',
+          callbacks:{
+            title:items=>labels[items[0].dataIndex],
+            label:ctx=>{
+              const v=ctx.parsed.y;
+              return ' '+ctx.dataset.label+': '+(st.ymode==='pct'?v.toFixed(1)+'%':'₹'+v.toFixed(2));
             }
           }
         }
       },
-      scales: {
-        x: {
-          ticks: { color:'#475569', maxTicksLimit:10, maxRotation:0,
-                   font:{size:10} },
-          grid: { color:'#152035' },
-          border: { color:'#1E3A5F' }
-        },
-        y: {
-          ticks: { color:'#475569', callback: yTickFn, font:{size:10} },
-          grid: { color:'#152035' },
-          border: { color:'#1E3A5F' },
-          title: { display:true, text:yLabel, color:'#334155', font:{size:10} }
-        }
+      scales:{
+        x:{ticks:{color:'#475569',maxTicksLimit:10,maxRotation:0,font:{size:10}},
+           grid:{color:'#152035'},border:{color:'#1E3A5F'}},
+        y:{ticks:{color:'#475569',callback:yTickFn,font:{size:10}},
+           grid:{color:'#152035'},border:{color:'#1E3A5F'},
+           title:{display:true,text:st.ymode==='pct'?'% of today\'s value':'Option value (₹)',
+                  color:'#334155',font:{size:10}}}
       }
     }
   });
 
-  buildTable(datasets);
+  buildTable(res);
 }
 
-// ── Value summary table ───────────────────────────────────────────────
-function buildTable(datasets){
-  const {spot, type, strike, step} = st;
-  const atm = Math.round(strike/step)*step;
-  const tbl = document.getElementById('val-table');
-  tbl.innerHTML = '';
+// ── Comparison table ──────────────────────────────────────────────────
+function buildTable({datasets,atm}){
+  // Find best strike = highest bestPct
+  const maxBestPct=Math.max(...datasets.map(d=>d.bestPct));
+  const tbody=document.getElementById('comp-body');
+  tbody.innerHTML='';
 
-  datasets.forEach(d => {
-    const isITM = type==='call' ? d.K < spot : d.K > spot;
-    const isATM = d.K === atm;
-    const badge = isATM
-      ? '<span class="atm-badge">ATM</span>'
-      : isITM ? '<span class="itm-badge">ITM</span>' : '<span class="otm-badge">OTM</span>';
-    const decay = d.todayVal > 0
-      ? ((d.expiryVal - d.todayVal)/d.todayVal*100).toFixed(1)+'%'
-      : '—';
+  datasets.forEach(d=>{
+    const isBest=d.bestPct===maxBestPct&&d.bestPct>0;
+    const itmOtm=d.K===atm?'atm':(st.type==='put'?d.K>atm:'call'?d.K<atm:false)?'itm':'otm';
+    const badge=`<span class="badge badge-${itmOtm}">${itmOtm.toUpperCase()}</span>`;
 
-    tbl.innerHTML += `
-      <div class="val-row">
-        <div class="swatch" style="background:${d.color}"></div>
-        <div class="strike-lbl">₹${d.K.toLocaleString('en-IN')}</div>
-        ${badge}
-        <div style="flex:1"></div>
-        <div style="font-size:10px;color:#475569;margin-right:4px">Today</div>
-        <div class="val-now">₹${d.todayVal.toFixed(2)}</div>
-        <div style="font-size:10px;color:#475569;margin-right:4px">At expiry</div>
-        <div class="val-exp">₹${d.expiryVal.toFixed(2)}</div>
-        <div class="val-decay" style="min-width:80px;text-align:right">${decay} change</div>
-        <div style="margin-left:12px;padding-left:12px;border-left:1px solid #1E3A5F;font-size:11px;color:#94A3B8">
-          Target scenario&nbsp;
-          <span style="font-family:monospace;color:${d.targetVal>d.todayVal?'#10B981':'#F59E0B'}">
-            ₹${d.targetVal??'—'}
-          </span>
-          ${d.targetVal!=null&&d.todayVal>0?
-            '<span style="color:#475569"> ('+((d.targetVal-d.todayVal)/d.todayVal*100).toFixed(0)+'%)</span>':''}
-        </div>
-      </div>`;
+    const fmtPct=(v)=>{
+      const cl=v>0?'up':v<0?'dn':'neu';
+      return `<span class="${cl}">${v>0?'+':''}${v.toFixed(1)}%</span>`;
+    };
+    const fmtPnl=(pnl,pct)=>{
+      const cl=pnl>0?'up':pnl<0?'dn':'neu';
+      return `<span class="${cl}">${pnl>0?'+':''}₹${Math.abs(pnl).toFixed(2)}</span><br>
+              <span style="font-size:10px">${fmtPct(pct)}</span>`;
+    };
+
+    const tr=document.createElement('tr');
+    if(isBest) tr.className='best-row';
+    tr.innerHTML=`
+      <td><b>₹${d.K.toLocaleString('en-IN')}</b>${badge}${isBest?'<span class="best-tag">★ Best ROM</span>':''}</td>
+      <td>₹${d.todayVal.toFixed(2)}</td>
+      <td>₹${d.breakeven.toLocaleString('en-IN')}</td>
+      <td>${fmtPnl(d.bestPnl,d.bestPct)}</td>
+      <td>${fmtPnl(d.worstPnl,d.worstPct)}</td>
+      <td class="dn">−₹${d.todayVal.toFixed(2)}</td>
+      <td class="${d.bestPct>100?'up':d.bestPct>0?'neu':'dn'}">${d.bestPct.toFixed(0)}%</td>
+      <td class="${d.prob>40?'up':d.prob>20?'neu':'dn'}">${d.prob.toFixed(0)}%</td>`;
+    tbody.appendChild(tr);
   });
 }
 
-// ── Live data fetch ───────────────────────────────────────────────────
+// ── Live data ─────────────────────────────────────────────────────────
 async function fetchLive(){
   const btn=document.getElementById('btn-live');
   const errEl=document.getElementById('live-err');
   btn.disabled=true; btn.textContent='⟳ Fetching…';
   errEl.style.display='none';
   try{
-    const [mkt, chain] = await Promise.all([
+    const [mkt,chain]=await Promise.all([
       fetch('/api/market').then(r=>r.json()),
       fetch('/api/chain?symbol=NIFTY').then(r=>r.json())
     ]);
-
-    // Status dot
     const dot=document.getElementById('dot');
     dot.className='dot '+(mkt.market_open?'open':'closed');
-    document.getElementById('v-status').textContent=mkt.market_open?'Open':'Closed';
-    document.getElementById('v-status').style.color=mkt.market_open?'#10B981':'#EF4444';
-
-    if(mkt.spot){ document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN'); }
-    if(mkt.vix){  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1); }
-
-    // Use chain data if available
-    const spot = chain.spot || mkt.spot;
-    if(spot){ flashSet('i-spot', spot, 'spot'); }
-
-    if(chain.atm_iv){
-      document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%';
-      flashSet('i-iv', chain.atm_iv, 'iv');
-    }
-    if(chain.atm_strike){ flashSet('i-strike', chain.atm_strike, 'strike'); }
-
+    const vs=document.getElementById('v-status');
+    vs.textContent=mkt.market_open?'Open':'Closed';
+    vs.style.color=mkt.market_open?'#10B981':'#EF4444';
+    if(mkt.spot) document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN');
+    if(mkt.vix)  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1);
+    const spot=chain.spot||mkt.spot;
+    if(spot)           flashSet('i-spot',spot,'spot');
+    if(chain.atm_iv)  {document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%'; flashSet('i-iv',chain.atm_iv,'iv');}
+    if(chain.atm_strike) flashSet('i-strike',chain.atm_strike,'strike');
     if(chain.expiry){
-      // Parse expiry string → YYYY-MM-DD for date input
-      const parsed = new Date(chain.expiry.replace(/-/g,' '));
-      if(!isNaN(parsed)){
-        const iso = parsed.toISOString().split('T')[0];
-        flashSet('i-expiry', iso, 'expiry');
-        document.getElementById('v-expiry').textContent = chain.expiry;
+      const p=new Date(chain.expiry.replace(/-/g,' '));
+      if(!isNaN(p)){
+        const iso=p.toISOString().split('T')[0];
+        flashSet('i-expiry',iso,'expiry');
+        document.getElementById('v-expiry').textContent=chain.expiry;
         document.getElementById('pill-exp').style.display='flex';
+        if(!st.tdLate)  { document.getElementById('i-tdlate').value=iso;  st.tdLate=iso; }
+        if(!st.tdEarly) { const e=new Date(p); e.setDate(e.getDate()-3); document.getElementById('i-tdearly').value=e.toISOString().split('T')[0]; st.tdEarly=e.toISOString().split('T')[0]; }
       }
     }
-
-    // default target date to expiry when live data loads
-    if(!st.targetDate && chain.expiry){
-      const parsed=new Date(chain.expiry.replace(/-/g,' '));
-      if(!isNaN(parsed)) document.getElementById('i-tdate').value=parsed.toISOString().split('T')[0];
-    }
-
-    if(chain.error){
-      errEl.textContent='⚠ '+chain.error;
-      errEl.style.display='block';
-    }
-
-    document.getElementById('live-ts').textContent =
-      'Updated '+new Date().toLocaleTimeString('en-IN',
-        {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-    buildStrikePills();
-    refresh();
-
-  } catch(e){
-    errEl.textContent='⚠ Could not reach server.';
-    errEl.style.display='block';
-  } finally{
-    btn.disabled=false; btn.textContent='⟳ Load Live Data';
-  }
+    if(chain.error){ errEl.textContent='⚠ '+chain.error; errEl.style.display='block'; }
+    document.getElementById('live-ts').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    buildStrikePills(); refresh();
+  }catch(e){
+    errEl.textContent='⚠ Could not reach server.'; errEl.style.display='block';
+  }finally{ btn.disabled=false; btn.textContent='⟳ Load Live Data'; }
 }
 
-function flashSet(id, val, key){
-  const el=document.getElementById(id);
-  if(!el) return;
-  el.value = val;
-  st[key] = typeof val==='string' ? val : parseFloat(val);
-  el.classList.add('updated');
-  setTimeout(()=>el.classList.remove('updated'), 2000);
+function flashSet(id,val,key){
+  const el=document.getElementById(id); if(!el) return;
+  el.value=val; st[key]=typeof val==='string'?val:parseFloat(val);
+  el.classList.add('updated'); setTimeout(()=>el.classList.remove('updated'),2000);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
