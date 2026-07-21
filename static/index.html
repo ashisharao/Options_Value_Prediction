@@ -123,13 +123,6 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
       <button id="btn-put" class="on" onclick="setType('put')">▼ Put</button>
     </div>
   </div>
-  <div class="twrap">
-    <label>Chart Y Axis</label>
-    <div class="tg">
-      <button id="btn-value" class="on" onclick="setYMode('value')">Value (₹)</button>
-      <button id="btn-pct" onclick="setYMode('pct')">% of Today</button>
-    </div>
-  </div>
 </div>
 
 <div class="strike-row">
@@ -139,7 +132,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 
 <!-- Chart -->
 <div class="chart-wrap">
-  <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label">24300</span> · shaded = your target window</div>
+  <div class="chart-title">P&L % by strike · green = best case · blue = base case · spot ₹<span id="spot-label">24300</span></div>
   <canvas id="chart" style="max-height:220px"></canvas>
 </div>
 
@@ -152,7 +145,6 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
       <th>Breakeven</th>
       <th>Best Case P&L</th>
       <th>Base Case P&L</th>
-      <th>Max Loss</th>
       <th>Best ROM %</th>
       <th>P(Profit)</th>
     </tr>
@@ -335,59 +327,48 @@ function refresh(){
   document.getElementById('spot-label').textContent=Number(st.spot).toLocaleString('en-IN');
   const res=computeAll();
   if(!res){if(chart){chart.destroy();chart=null;}return;}
-  const {labels,datasets,earlyIdx,lateIdx}=res;
-
-  const yTickFn=st.ymode==='pct'?v=>v+'%':v=>'₹'+v;
-
+  const {datasets}=res;
   if(chart) chart.destroy();
   const ctx=document.getElementById('chart').getContext('2d');
   chart=new Chart(ctx,{
-    type:'line',
-    data:{labels,datasets:datasets.map(d=>d.dataset)},
+    type:'bar',
+    data:{
+      labels:datasets.map(d=>'₹'+d.K.toLocaleString('en-IN')),
+      datasets:[
+        {
+          label:'Best Case P&L %',
+          data:datasets.map(d=>r2(d.bestPct)),
+          backgroundColor:datasets.map(d=>d.bestPct>0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.5)'),
+          borderColor:datasets.map(d=>d.bestPct>0?'#34D399':'#F87171'),
+          borderWidth:1, borderRadius:4,
+        },
+        {
+          label:'Base Case P&L %',
+          data:datasets.map(d=>r2(d.worstPct)),
+          backgroundColor:datasets.map(d=>d.worstPct>0?'rgba(96,165,250,0.7)':'rgba(248,113,113,0.4)'),
+          borderColor:datasets.map(d=>d.worstPct>0?'#60A5FA':'#F87171'),
+          borderWidth:1, borderRadius:4,
+        }
+      ]
+    },
     options:{
       responsive:true, maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
       plugins:{
-        annotation:{
-          annotations:{
-            band:{
-              type:'box',
-              xMin:earlyIdx, xMax:lateIdx,
-              backgroundColor:'rgba(245,158,11,0.07)',
-              borderColor:'rgba(245,158,11,0.25)',
-              borderWidth:1,
-              label:{display:earlyIdx<lateIdx,content:'Target window',
-                position:{x:'center',y:'start'},
-                color:'rgba(245,158,11,0.45)',font:{size:9},
-                backgroundColor:'transparent'}
-            }
-          }
-        },
-        legend:{labels:{color:'#94A3B8',usePointStyle:true,pointStyleWidth:10,
-                         boxHeight:6,font:{size:11}}},
+        legend:{labels:{color:'#94A3B8',font:{size:11}}},
         tooltip:{
           backgroundColor:'#0D1E33',borderColor:'#2A4870',borderWidth:1,
           titleColor:'#94A3B8',bodyColor:'#E2E8F0',
-          callbacks:{
-            title:items=>labels[items[0].dataIndex],
-            label:ctx=>{
-              const v=ctx.parsed.y;
-              return ' '+ctx.dataset.label+': '+(st.ymode==='pct'?v.toFixed(1)+'%':'₹'+v.toFixed(2));
-            }
-          }
-        }
+          callbacks:{label:ctx=>' '+ctx.dataset.label+': '+(ctx.parsed.y>0?'+':'')+ctx.parsed.y.toFixed(1)+'%'}
+        },
+        annotation:{annotations:{zero:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.2)',borderWidth:1}}}
       },
       scales:{
-        x:{ticks:{color:'#475569',maxTicksLimit:10,maxRotation:0,font:{size:10}},
-           grid:{color:'#152035'},border:{color:'#1E3A5F'}},
-        y:{ticks:{color:'#475569',callback:yTickFn,font:{size:10}},
-           grid:{color:'#152035'},border:{color:'#1E3A5F'},
-           title:{display:true,text:st.ymode==='pct'?'% of today\'s value':'Option value (₹)',
-                  color:'#334155',font:{size:10}}}
+        x:{ticks:{color:'#475569',font:{size:11}},grid:{color:'#152035'},border:{color:'#1E3A5F'}},
+        y:{ticks:{color:'#475569',callback:v=>v+'%',font:{size:10}},grid:{color:'#152035'},border:{color:'#1E3A5F'},
+           title:{display:true,text:'P&L % of premium paid',color:'#334155',font:{size:10}}}
       }
     }
   });
-
   buildTable(res);
 }
 
@@ -421,7 +402,6 @@ function buildTable({datasets,atm}){
       <td>₹${d.breakeven.toLocaleString('en-IN')}</td>
       <td>${fmtPnl(d.bestPnl,d.bestPct)}</td>
       <td>${fmtPnl(d.worstPnl,d.worstPct)}</td>
-      <td class="dn">−₹${d.todayVal.toFixed(2)}</td>
       <td class="${d.bestPct>100?'up':d.bestPct>0?'neu':'dn'}">${d.bestPct.toFixed(0)}%</td>
       <td class="${d.prob>40?'up':d.prob>20?'neu':'dn'}">${d.prob.toFixed(0)}%</td>`;
     tbody.appendChild(tr);
