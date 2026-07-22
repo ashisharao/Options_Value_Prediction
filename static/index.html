@@ -7,114 +7,139 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <style>
+:root{
+  --bg:#111827; --bg2:#1F2937; --bg3:#374151;
+  --border:#374151; --border2:#4B5563;
+  --text:#FFFFFF; --text2:#F3F4F6; --text3:#D1D5DB; --text4:#9CA3AF;
+  --accent:#F59E0B; --green:#10B981; --red:#EF4444; --blue:#60A5FA;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#09162A;color:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:10px;font-size:13px}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:12px;font-size:13px;min-height:100vh}
 h1{font-size:16px;font-weight:700;margin-bottom:2px}
-.sub{font-size:11px;color:#64748B;margin-bottom:10px}
+.sub{font-size:11px;color:var(--text4);margin-bottom:10px}
 
 /* Live bar */
-.live-bar{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:6px;padding:4px 8px}
-.pill .lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em}
-.pill .val{font-family:monospace;font-size:13px;font-weight:700;color:#CBD5E1}
+.live-bar{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px}
+.pill .lbl{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em}
+.pill .val{font-family:monospace;font-size:13px;font-weight:700;color:var(--text2)}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.dot.open{background:#10B981;box-shadow:0 0 5px #10B981}.dot.closed{background:#EF4444}.dot.unknown{background:#64748B}
+.dot.open{background:var(--green);box-shadow:0 0 5px var(--green)}.dot.closed{background:var(--red)}.dot.unknown{background:var(--text4)}
 .spacer{flex:1}
 .btn{padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.12s}
-.btn-live{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:#10B981}
-.btn-live:hover{background:rgba(16,185,129,0.22)}
+.btn-live{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:var(--green)}
+.btn-live:hover{background:rgba(16,185,129,0.25)}
 .btn-live:disabled{opacity:.4;cursor:not-allowed}
-.live-ts{font-size:10px;color:#475569}
-.live-err{font-size:10px;color:#F59E0B;max-width:280px;line-height:1.4}
+.live-ts{font-size:10px;color:var(--text4)}
+.live-err{font-size:10px;color:var(--accent);max-width:280px;line-height:1.4}
 
 /* Controls */
-.section-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;margin-top:8px}
+.section-label{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;margin-top:8px}
 .cg{display:grid;gap:6px;margin-bottom:6px}
-.cg-6{grid-template-columns:repeat(6,1fr)}
-.cg-4{grid-template-columns:repeat(4,1fr)}
-.ctrl{background:rgba(255,255,255,0.04);border:1px solid #1E3A5F;border-radius:7px;padding:6px 8px}
-.ctrl label{display:block;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-.ctrl input{width:100%;background:transparent;border:none;outline:none;color:#E2E8F0;font-size:13px;font-family:monospace;font-weight:700}
-.ctrl input::placeholder{color:#334155;font-weight:400}
-.ctrl input.updated{color:#10B981;transition:color 1.5s}
+.cg-5{grid-template-columns:repeat(5,1fr)}
+.cg-2{grid-template-columns:1fr 1fr}
+.ctrl{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:7px 9px}
+.ctrl label{display:block;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.ctrl input,.ctrl select{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:monospace;font-weight:700}
+.ctrl select option{background:var(--bg2);color:var(--text)}
+.ctrl input::placeholder{color:var(--text4);font-weight:400;font-size:12px}
+.ctrl input.updated{color:var(--green);transition:color 1.5s}
+
+/* Sliders */
+.slider-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px}
+.slider-wrap label{display:block;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer}
+.slider-date{font-family:monospace;font-size:11px;color:var(--accent);font-weight:600;min-width:90px;text-align:right}
 
 /* Toggles */
 .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-.twrap label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:2px}
-.tg{display:flex;border:1px solid #1E3A5F;border-radius:6px;overflow:hidden}
-.tg button{padding:4px 11px;background:transparent;border:none;cursor:pointer;color:#64748B;font-size:12px;font-family:inherit;transition:.12s}
-.tg button.on{background:#1E3A5F;color:#F59E0B;font-weight:600}
+.twrap label{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:2px}
+.tg{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.tg button{padding:4px 11px;background:transparent;border:none;cursor:pointer;color:var(--text4);font-size:12px;font-family:inherit;transition:.12s}
+.tg button.on{background:var(--bg3);color:var(--accent);font-weight:600}
 
 /* Strike pills */
 .strike-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
-.strike-row .slbl{font-size:10px;color:#475569;margin-right:2px}
-.spill{padding:3px 9px;border-radius:20px;border:1px solid #1E3A5F;background:transparent;color:#64748B;font-size:11px;font-family:monospace;cursor:pointer;transition:.12s}
-.spill.on{background:#1E3A5F;color:#E2E8F0}
-.spill.atm{border-color:#F59E0B;color:#F59E0B}
-.spill.atm.on{background:rgba(245,158,11,0.12)}
+.strike-row .slbl{font-size:10px;color:var(--text4);margin-right:2px}
+.spill{padding:3px 9px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:monospace;cursor:pointer;transition:.12s}
+.spill.on{background:var(--bg3);color:var(--text2);border-color:var(--border2)}
+.spill.atm{border-color:var(--accent);color:var(--accent)}
+.spill.atm.on{background:rgba(245,158,11,0.15)}
 
 /* Chart */
-.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid #1E3A5F;border-radius:8px;padding:10px;margin-bottom:8px;height:260px}
-.chart-title{font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;height:240px}
+.chart-title{font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 
-/* Comparison table */
+/* Table */
 .comp-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
-.comp-table th{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.08em;padding:5px 8px;border-bottom:1px solid #1E3A5F;text-align:right;white-space:nowrap}
+.comp-table th{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;background:var(--bg2)}
 .comp-table th:first-child{text-align:left}
-.comp-table td{padding:6px 8px;border-bottom:1px solid rgba(30,58,95,0.5);text-align:right;font-family:monospace}
-.comp-table td:first-child{text-align:left}
-.comp-table tr:hover td{background:rgba(255,255,255,0.02)}
-.comp-table tr.best-row td{background:rgba(16,185,129,0.06);border-left:2px solid #10B981}
-.comp-table tr.best-row td:first-child{border-left:2px solid #10B981}
+.comp-table td{padding:7px 8px;border-bottom:1px solid rgba(55,65,81,0.6);text-align:right;font-family:monospace;color:var(--text2)}
+.comp-table td:first-child{text-align:left;color:var(--text)}
+.comp-table tr:hover td{background:rgba(255,255,255,0.03)}
+.comp-table tr.best-row td{background:rgba(16,185,129,0.07);border-left:2px solid var(--green)}
 .badge{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-family:sans-serif}
-.badge-itm{background:rgba(16,185,129,0.15);color:#10B981}
-.badge-otm{background:rgba(239,68,68,0.1);color:#EF4444}
-.badge-atm{background:rgba(245,158,11,0.12);color:#F59E0B}
-.up{color:#10B981}.dn{color:#EF4444}.neu{color:#94A3B8}
-.best-tag{font-size:9px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:3px;margin-left:6px;font-family:sans-serif}
-
-.foot{font-size:10px;color:#1E3A5F;text-align:center;line-height:1.7;margin-top:4px}
+.badge-itm{background:rgba(16,185,129,0.15);color:var(--green)}
+.badge-otm{background:rgba(239,68,68,0.12);color:var(--red)}
+.badge-atm{background:rgba(245,158,11,0.15);color:var(--accent)}
+.up{color:var(--green)}.dn{color:var(--red)}.neu{color:var(--text3)}
+.best-tag{font-size:9px;background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:3px;margin-left:6px;font-family:sans-serif}
+.foot{font-size:10px;color:var(--text4);text-align:center;line-height:1.7;margin-top:4px}
 </style>
 </head>
 <body>
 
 <h1>Option Strike Selector</h1>
-<div class="sub">Compare strikes across your bearish scenario · Black-Scholes pricing</div>
+<div class="sub">Compare strikes across your scenario · Black-Scholes pricing</div>
 
 <!-- Live bar -->
 <div class="live-bar">
   <div class="pill"><span class="dot unknown" id="dot"></span><span class="lbl">Market</span><span class="val" id="v-status">—</span></div>
   <div class="pill"><span class="lbl">Nifty</span><span class="val" id="v-spot">—</span></div>
   <div class="pill"><span class="lbl">VIX</span><span class="val" id="v-vix">—</span></div>
-  <div class="pill"><span class="lbl">ATM IV</span><span class="val" id="v-iv" style="color:#F59E0B">—</span></div>
+  <div class="pill"><span class="lbl">ATM IV</span><span class="val" id="v-iv" style="color:var(--accent)">—</span></div>
   <div class="pill" id="pill-exp" style="display:none"><span class="lbl">Expiry</span><span class="val" id="v-expiry">—</span></div>
   <div class="spacer"></div>
   <span class="live-err" id="live-err" style="display:none"></span>
   <span class="live-ts" id="live-ts"></span>
-  <button class="btn btn-live" id="btn-live" onclick="fetchLive()">⟳ Load Live Data</button>
+  <button class="btn btn-live" id="btn-live" onclick="fetchLive(false)">⟳ Refresh</button>
 </div>
 
 <!-- Market inputs -->
 <div class="section-label">Market</div>
-<div class="cg cg-6">
+<div class="cg cg-5">
   <div class="ctrl"><label>Spot / CMP (₹)</label><input id="i-spot" type="number" value="24300" step="50" oninput="onInput('spot',this.value)"></div>
-  <div class="ctrl"><label>Centre Strike (₹)</label><input id="i-strike" type="number" value="24300" step="50" oninput="onInput('strike',this.value)"></div>
-  <div class="ctrl"><label>Expiry Date</label><input id="i-expiry" type="date" oninput="onInput('expiry',this.value)"></div>
+  <div class="ctrl"><label>Centre Strike (₹)</label><input id="i-strike" type="number" value="24300" step="100" oninput="onInput('strike',this.value)"></div>
+  <div class="ctrl"><label>Expiry (Nifty — Tuesdays)</label><select id="i-expiry" onchange="onInput('expiry',this.value)"></select></div>
   <div class="ctrl"><label>IV %</label><input id="i-iv" type="number" value="15" min="3" max="80" step="0.5" oninput="onInput('iv',this.value)"></div>
-  <div class="ctrl"><label>Strike Step (₹)</label><input id="i-step" type="number" value="50" min="10" step="10" oninput="onInput('step',this.value)"></div>
-  <div class="ctrl"><label>Risk-free Rate %</label><input id="i-rate" type="number" value="6.5" min="0" max="20" step="0.1" oninput="onInput('rate',this.value)"></div>
+  <div class="ctrl"><label>Strike Step (₹)</label><input id="i-step" type="number" value="100" min="10" step="10" oninput="onInput('step',this.value)"></div>
 </div>
 
 <!-- Scenario inputs -->
-<div class="section-label">Your Bearish Scenario</div>
-<div class="cg cg-4">
-  <div class="ctrl"><label>Target Price — Best Case (₹)</label><input id="i-tpmin" type="number" step="50" placeholder="e.g. 23800 (optimistic)" oninput="onInput('tpMin',this.value)"></div>
-  <div class="ctrl"><label>Target Price — Base Case (₹)</label><input id="i-tpmax" type="number" step="50" placeholder="e.g. 24100 (conservative)" oninput="onInput('tpMax',this.value)"></div>
-  <div class="ctrl"><label>Move Expected By (Early)</label><input id="i-tdearly" type="date" oninput="onInput('tdEarly',this.value)"></div>
-  <div class="ctrl"><label>Move Expected By (Late)</label><input id="i-tdlate" type="date" oninput="onInput('tdLate',this.value)"></div>
+<div class="section-label">Your Scenario</div>
+<div class="cg cg-2" style="margin-bottom:8px">
+  <div class="ctrl"><label>Optimistic Target (₹) · <span id="opt-hint" style="color:var(--accent)">bigger move</span></label><input id="i-tp1" type="number" step="50" oninput="onInput('tp1',this.value)"></div>
+  <div class="ctrl"><label>Conservative Target (₹) · <span id="con-hint" style="color:var(--text4)">smaller move</span></label><input id="i-tp2" type="number" step="50" oninput="onInput('tp2',this.value)"></div>
+</div>
+<div class="cg cg-2" style="margin-bottom:8px">
+  <div class="slider-wrap">
+    <label>Move Expected By — Early Date</label>
+    <div class="slider-row">
+      <input type="range" id="sl-early" min="0" max="21" value="14" oninput="onSlider('early',this.value)">
+      <span class="slider-date" id="sl-early-lbl">—</span>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <label>Move Expected By — Late Date</label>
+    <div class="slider-row">
+      <input type="range" id="sl-late" min="0" max="21" value="21" oninput="onSlider('late',this.value)">
+      <span class="slider-date" id="sl-late-lbl">—</span>
+    </div>
+  </div>
 </div>
 
-<!-- Toggles + strike pills -->
+<!-- Toggles + strikes -->
 <div class="row">
   <div class="twrap">
     <label>Option Type</label>
@@ -124,7 +149,6 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
     </div>
   </div>
 </div>
-
 <div class="strike-row">
   <span class="slbl">Strikes:</span>
   <div id="strike-pills"></div>
@@ -132,19 +156,19 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 
 <!-- Chart -->
 <div class="chart-wrap">
-  <div class="chart-title">P&L % by strike · green = best case · blue = base case · spot ₹<span id="spot-label">24300</span></div>
-  <canvas id="chart" style="max-height:220px"></canvas>
+  <div class="chart-title">P&L % by strike · green = optimistic · blue = conservative · spot ₹<span id="spot-label">24300</span></div>
+  <canvas id="chart" style="max-height:200px"></canvas>
 </div>
 
-<!-- Strike comparison table -->
-<table class="comp-table" id="comp-table">
+<!-- Table -->
+<table class="comp-table">
   <thead>
     <tr>
       <th>Strike</th>
       <th>Premium Today</th>
       <th>Breakeven</th>
-      <th>Best Case P&L</th>
-      <th>Base Case P&L</th>
+      <th>Optimistic P&L</th>
+      <th>Conservative P&L</th>
       <th>Best ROM %</th>
       <th>P(Profit)</th>
     </tr>
@@ -153,8 +177,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 </table>
 
 <div class="foot">
-  Black-Scholes · spot held constant on curves · scenario P&amp;L uses your target price + date<br>
-  Best case = optimistic price on early date · Base case = conservative price on late date · P(Profit) = N(−d₂) at expiry
+  Black-Scholes · Optimistic = bigger move on early date · Conservative = smaller move on late date · P(Profit) = N(−d₂) at expiry
 </div>
 
 <script>
@@ -167,57 +190,119 @@ function ncdf(x){
 }
 function bs(S,K,T,r,sig,type){
   if(T<=0) return Math.max(type==='call'?S-K:K-S,0);
-  const sq=sig*Math.sqrt(T), d1=(Math.log(S/K)+(r+.5*sig*sig)*T)/sq, d2=d1-sq;
-  return type==='call'
-    ? S*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2)
-    : K*Math.exp(-r*T)*ncdf(-d2)-S*ncdf(-d1);
+  const sq=sig*Math.sqrt(T),d1=(Math.log(S/K)+(r+.5*sig*sig)*T)/sq,d2=d1-sq;
+  return type==='call'?S*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2):K*Math.exp(-r*T)*ncdf(-d2)-S*ncdf(-d1);
 }
 function probProfit(S,K,T,r,sig,type){
   if(T<=0) return type==='put'?(S<K?100:0):(S>K?100:0);
-  const sq=sig*Math.sqrt(T);
-  const d2=(Math.log(S/K)+(r-.5*sig*sig)*T)/sq;
+  const sq=sig*Math.sqrt(T),d2=(Math.log(S/K)+(r-.5*sig*sig)*T)/sq;
   return r2(type==='put'?ncdf(-d2)*100:ncdf(d2)*100);
 }
 function r2(v){return Math.round(v*100)/100}
 
-// ── State ──────────────────────────────────────────────────────────────
-const _de=new Date(); _de.setDate(_de.getDate()+21);
-const _defExp=_de.toISOString().split('T')[0];
-document.getElementById('i-expiry').value=_defExp;
+// ── Expiry dropdown (Nifty = Tuesdays) ────────────────────────────────
+function buildExpiryDropdown(){
+  const sel=document.getElementById('i-expiry');
+  sel.innerHTML='';
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today=new Date(); today.setHours(0,0,0,0);
+  let d=new Date(today);
+  // Find next Tuesday (day 2)
+  while(d.getDay()!==2) d.setDate(d.getDate()+1);
+  for(let i=0;i<12;i++){
+    const opt=document.createElement('option');
+    opt.value=d.toISOString().split('T')[0];
+    opt.textContent=`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} (${DAYS[d.getDay()]})`;
+    sel.appendChild(opt);
+    d.setDate(d.getDate()+7);
+  }
+  st.expiry=sel.value;
+  updateSliderLabels();
+}
 
-let st={spot:24300,strike:24300,expiry:_defExp,iv:15,step:50,rate:6.5,
-        type:'put',ymode:'value',
-        tpMin:null,tpMax:null,tdEarly:null,tdLate:null};
-let activeStrikes=new Set([24100,24150,24200,24250,24300,24350,24400]);
+// ── State ──────────────────────────────────────────────────────────────
+let st={spot:24300,strike:24300,expiry:'',iv:15,step:100,rate:6.5,
+        type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21};
+let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#FB923C','#4ADE80'];
 let chart=null;
 
-// ── Inputs ─────────────────────────────────────────────────────────────
+// ── Auto-fill targets ─────────────────────────────────────────────────
+function autoFillTargets(){
+  const {spot,step,type}=st;
+  if(!spot||!step) return;
+  const s=step;
+  // Optimistic = bigger directional move; Conservative = smaller
+  const opt1=type==='put'
+    ? Math.round(spot*0.97/s)*s   // put optimistic: -3%
+    : Math.round(spot*1.03/s)*s;  // call optimistic: +3%
+  const opt2=type==='put'
+    ? Math.round(spot*0.99/s)*s   // put conservative: -1%
+    : Math.round(spot*1.01/s)*s;  // call conservative: +1%
+  st.tp1=opt1; st.tp2=opt2;
+  const e1=document.getElementById('i-tp1'),e2=document.getElementById('i-tp2');
+  if(e1) e1.value=opt1;
+  if(e2) e2.value=opt2;
+  // Update hints
+  const hint=type==='put'?'↓ lower':'↑ higher';
+  document.getElementById('opt-hint').textContent='bigger move '+hint;
+  document.getElementById('con-hint').textContent='smaller move '+hint;
+}
+
+// ── Slider helpers ────────────────────────────────────────────────────
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fmtDate(d){
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+DOW[d.getDay()];
+}
+function totalDays(){
+  const exp=new Date(st.expiry+'T00:00:00');
+  const today=new Date(); today.setHours(0,0,0,0);
+  return Math.max(Math.round((exp-today)/86400000),1);
+}
+function sliderToDate(days){
+  const d=new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+parseInt(days));
+  return d;
+}
+function updateSliderLabels(){
+  const max=totalDays();
+  ['early','late'].forEach(k=>{
+    const el=document.getElementById('sl-'+k);
+    el.max=max;
+    if(k==='late') el.value=max;
+    el.value=Math.min(parseInt(el.value),max);
+    if(k==='early') st.earlyDays=parseInt(el.value);
+    else st.lateDays=parseInt(el.value);
+    document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDate(el.value));
+  });
+}
+function onSlider(k,v){
+  if(k==='early') st.earlyDays=parseInt(v);
+  else st.lateDays=parseInt(v);
+  document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDate(v));
+  refresh();
+}
+
+// ── Inputs ────────────────────────────────────────────────────────────
 function onInput(key,val){
-  const strKeys=['expiry','tdEarly','tdLate'];
-  if(strKeys.includes(key)) st[key]=val||null;
-  else{ const v=parseFloat(val); st[key]=(!isNaN(v)&&v>0)?v:null; }
-  if(['spot','strike','step'].includes(key)) buildStrikePills();
+  if(key==='expiry'){st[key]=val||null;updateSliderLabels();}
+  else{const v=parseFloat(val);st[key]=(!isNaN(v)&&v>0)?v:null;}
+  if(['spot','strike','step'].includes(key)){buildStrikePills();autoFillTargets();}
   refresh();
 }
 function setType(t){
   st.type=t;
   document.getElementById('btn-call').classList.toggle('on',t==='call');
   document.getElementById('btn-put').classList.toggle('on',t==='put');
-  refresh();
-}
-function setYMode(m){
-  st.ymode=m;
-  document.getElementById('btn-value').classList.toggle('on',m==='value');
-  document.getElementById('btn-pct').classList.toggle('on',m==='pct');
+  autoFillTargets();
   refresh();
 }
 
 // ── Strike pills ──────────────────────────────────────────────────────
 function buildStrikePills(){
-  const {strike,step}=st;
-  const atm=Math.round(strike/step)*step;
-  const cands=[-3,-2,-1,0,1,2,3].map(i=>atm+i*step);
+  const atm=Math.round((st.strike||st.spot)/st.step)*st.step;
+  const cands=[-3,-2,-1,0,1,2,3].map(i=>atm+i*st.step);
   activeStrikes=new Set(cands);
   const c=document.getElementById('strike-pills');
   c.innerHTML='';
@@ -225,7 +310,6 @@ function buildStrikePills(){
     const b=document.createElement('button');
     b.className='spill on'+(s===atm?' atm':'');
     b.textContent='₹'+s.toLocaleString('en-IN');
-    b.dataset.s=s;
     b.onclick=()=>{
       if(activeStrikes.has(s)){if(activeStrikes.size>1)activeStrikes.delete(s);}
       else activeStrikes.add(s);
@@ -236,98 +320,48 @@ function buildStrikePills(){
   });
 }
 
-// ── Time helpers ──────────────────────────────────────────────────────
-function toIST(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}))}
-function isMktOpen(d){
-  const ist=toIST(d),day=ist.getDay(),m=ist.getHours()*60+ist.getMinutes();
-  return day>0&&day<6&&m>=555&&m<=930;
-}
-function parseMarketSamples(){
-  const now=new Date();
-  const expiryEnd=new Date(st.expiry+'T15:30:00+05:30');
-  if(expiryEnd<=now) return {dates:[],labels:[],expiryEnd};
-  const STEP=15*60*1000;
-  const dates=[new Date(now)],labels=['Now'];
-  const dfmt=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'});
-  const tfmt=new Intl.DateTimeFormat('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata',hour12:false});
-  let cur=new Date(Math.ceil(now.getTime()/STEP)*STEP);
-  while(cur<=expiryEnd){
-    if(isMktOpen(cur)){dates.push(new Date(cur));labels.push(dfmt.format(cur)+' '+tfmt.format(cur));}
-    cur=new Date(cur.getTime()+STEP);
-  }
-  return {dates,labels,expiryEnd};
-}
-function findIdx(dates,dateStr,end=false){
-  if(!dateStr) return end?dates.length-1:0;
-  const target=new Date(dateStr+'T'+(end?'15:30':'09:15')+':00+05:30');
-  if(end){ for(let i=dates.length-1;i>=0;i--) if(dates[i]<=target) return i; return dates.length-1; }
-  else { for(let i=0;i<dates.length;i++) if(dates[i]>=target) return i; return 0; }
-}
-
 // ── Compute ───────────────────────────────────────────────────────────
 function computeAll(){
-  const {dates,labels,expiryEnd}=parseMarketSamples();
-  if(!dates.length) return null;
-  const {spot,iv,rate,type,step,strike}=st;
-  const sig=iv/100,r=rate/100;
-  const atm=Math.round(strike/step)*step;
+  const {spot,iv,rate,type,step,strike,earlyDays,lateDays,tp1,tp2}=st;
+  if(!spot||!st.expiry) return null;
+  const sig=(iv||15)/100, r=(rate||6.5)/100;
+  const atm=Math.round((strike||spot)/step)*step;
   const strikes=[...activeStrikes].sort((a,b)=>a-b);
-  const T_full=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
+  const expiry=new Date(st.expiry+'T15:30:00+05:30');
+  const now=new Date();
+  const T_full=Math.max((expiry-now)/(365*24*3600*1000),0);
 
-  // Scenario indices
-  const earlyIdx=findIdx(dates,st.tdEarly,false);
-  const lateIdx =findIdx(dates,st.tdLate, true);
+  // For puts: optimistic = lower price; for calls: optimistic = higher price
+  const optSpot = tp1||spot, conSpot = tp2||spot;
+  const bestSpot  = type==='put'?Math.min(optSpot,conSpot):Math.max(optSpot,conSpot);
+  const worstSpot = type==='put'?Math.max(optSpot,conSpot):Math.min(optSpot,conSpot);
 
-  // Curves (spot constant)
+  const eDate=sliderToDate(earlyDays); eDate.setHours(15,30,0,0);
+  const lDate=sliderToDate(lateDays);  lDate.setHours(15,30,0,0);
+  const T_best =Math.max((expiry-eDate)/(365*24*3600*1000),0);
+  const T_worst=Math.max((expiry-lDate)/(365*24*3600*1000),0);
+
   const datasets=strikes.map((K,i)=>{
     const todayVal=r2(bs(spot,K,T_full,r,sig,type));
-    const values=dates.map(d=>{
-      const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
-      return r2(bs(spot,K,T,r,sig,type));
-    });
-    const data=st.ymode==='pct'
-      ?values.map(v=>todayVal>0?r2(v/todayVal*100):0)
-      :values;
-    const col=PALETTE[i%PALETTE.length];
-    const isATM=K===atm;
-
-    // Scenario values
-    const bestSpot =st.tpMin||spot, worstSpot=st.tpMax||spot;
-    const bestDate =dates[earlyIdx], worstDate=dates[lateIdx];
-    const T_best =Math.max((expiryEnd-bestDate) /(365*24*3600*1000),0);
-    const T_worst=Math.max((expiryEnd-worstDate)/(365*24*3600*1000),0);
     const bestVal =r2(bs(bestSpot, K,T_best, r,sig,type));
     const worstVal=r2(bs(worstSpot,K,T_worst,r,sig,type));
-    const bestPnl =r2(bestVal -todayVal);
-    const worstPnl=r2(worstVal-todayVal);
+    const bestPnl =r2(bestVal -todayVal), worstPnl=r2(worstVal-todayVal);
     const bestPct =todayVal>0?r2(bestPnl /todayVal*100):0;
     const worstPct=todayVal>0?r2(worstPnl/todayVal*100):0;
     const breakeven=type==='put'?r2(K-todayVal):r2(K+todayVal);
     const prob=probProfit(spot,K,T_full,r,sig,type);
-
-    return {
-      K,col,isATM,todayVal,bestVal,worstVal,
-      bestPnl,worstPnl,bestPct,worstPct,breakeven,prob,
-      dataset:{
-        label:'₹'+K.toLocaleString('en-IN'),
-        data, borderColor:col,
-        borderWidth:isATM?3:1.5,
-        pointRadius:0, pointHoverRadius:4,
-        tension:0.3, fill:false,
-        backgroundColor:col+'18',
-      }
-    };
+    return{K,col:PALETTE[i%PALETTE.length],isATM:K===atm,
+           todayVal,bestPnl,worstPnl,bestPct,worstPct,breakeven,prob};
   });
-
-  return {labels,datasets,strikes,expiryEnd,earlyIdx,lateIdx,atm};
+  return{datasets,atm};
 }
 
 // ── Chart ─────────────────────────────────────────────────────────────
 function refresh(){
-  document.getElementById('spot-label').textContent=Number(st.spot).toLocaleString('en-IN');
+  document.getElementById('spot-label').textContent=Number(st.spot||24300).toLocaleString('en-IN');
   const res=computeAll();
   if(!res){if(chart){chart.destroy();chart=null;}return;}
-  const {datasets}=res;
+  const{datasets}=res;
   if(chart) chart.destroy();
   const ctx=document.getElementById('chart').getContext('2d');
   chart=new Chart(ctx,{
@@ -335,69 +369,55 @@ function refresh(){
     data:{
       labels:datasets.map(d=>'₹'+d.K.toLocaleString('en-IN')),
       datasets:[
-        {
-          label:'Best Case P&L %',
-          data:datasets.map(d=>r2(d.bestPct)),
-          backgroundColor:datasets.map(d=>d.bestPct>0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.5)'),
-          borderColor:datasets.map(d=>d.bestPct>0?'#34D399':'#F87171'),
-          borderWidth:1, borderRadius:4,
-        },
-        {
-          label:'Base Case P&L %',
-          data:datasets.map(d=>r2(d.worstPct)),
-          backgroundColor:datasets.map(d=>d.worstPct>0?'rgba(96,165,250,0.7)':'rgba(248,113,113,0.4)'),
-          borderColor:datasets.map(d=>d.worstPct>0?'#60A5FA':'#F87171'),
-          borderWidth:1, borderRadius:4,
-        }
+        {label:'Optimistic P&L %',
+         data:datasets.map(d=>r2(d.bestPct)),
+         backgroundColor:datasets.map(d=>d.bestPct>0?'rgba(16,185,129,0.65)':'rgba(239,68,68,0.45)'),
+         borderColor:datasets.map(d=>d.bestPct>0?'#10B981':'#EF4444'),
+         borderWidth:1,borderRadius:4},
+        {label:'Conservative P&L %',
+         data:datasets.map(d=>r2(d.worstPct)),
+         backgroundColor:datasets.map(d=>d.worstPct>0?'rgba(96,165,250,0.65)':'rgba(239,68,68,0.35)'),
+         borderColor:datasets.map(d=>d.worstPct>0?'#60A5FA':'#EF4444'),
+         borderWidth:1,borderRadius:4},
       ]
     },
     options:{
-      responsive:true, maintainAspectRatio:false,
+      responsive:true,maintainAspectRatio:false,
       plugins:{
-        legend:{labels:{color:'#94A3B8',font:{size:11}}},
-        tooltip:{
-          backgroundColor:'#0D1E33',borderColor:'#2A4870',borderWidth:1,
-          titleColor:'#94A3B8',bodyColor:'#E2E8F0',
-          callbacks:{label:ctx=>' '+ctx.dataset.label+': '+(ctx.parsed.y>0?'+':'')+ctx.parsed.y.toFixed(1)+'%'}
-        },
-        annotation:{annotations:{zero:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.2)',borderWidth:1}}}
+        annotation:{annotations:{zero:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.15)',borderWidth:1}}},
+        legend:{labels:{color:'#F3F4F6',font:{size:11},usePointStyle:true,pointStyleWidth:10,boxHeight:6}},
+        tooltip:{backgroundColor:'#1F2937',borderColor:'#374151',borderWidth:1,
+          titleColor:'#9CA3AF',bodyColor:'#F9FAFB',
+          callbacks:{label:ctx=>' '+ctx.dataset.label+': '+(ctx.parsed.y>0?'+':'')+ctx.parsed.y.toFixed(1)+'%'}}
       },
       scales:{
-        x:{ticks:{color:'#475569',font:{size:11}},grid:{color:'#152035'},border:{color:'#1E3A5F'}},
-        y:{ticks:{color:'#475569',callback:v=>v+'%',font:{size:10}},grid:{color:'#152035'},border:{color:'#1E3A5F'},
-           title:{display:true,text:'P&L % of premium paid',color:'#334155',font:{size:10}}}
+        x:{ticks:{color:'#D1D5DB',font:{size:11}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'}},
+        y:{ticks:{color:'#D1D5DB',callback:v=>v+'%',font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
+           title:{display:true,text:'P&L % of premium paid',color:'#9CA3AF',font:{size:10}}}
       }
     }
   });
   buildTable(res);
 }
 
-// ── Comparison table ──────────────────────────────────────────────────
+// ── Table ─────────────────────────────────────────────────────────────
 function buildTable({datasets,atm}){
-  // Find best strike = highest bestPct
-  const maxBestPct=Math.max(...datasets.map(d=>d.bestPct));
+  const maxBest=Math.max(...datasets.map(d=>d.bestPct));
   const tbody=document.getElementById('comp-body');
   tbody.innerHTML='';
-
   datasets.forEach(d=>{
-    const isBest=d.bestPct===maxBestPct&&d.bestPct>0;
-    const itmOtm=d.K===atm?'atm':(st.type==='put'?d.K>atm:'call'?d.K<atm:false)?'itm':'otm';
+    const isBest=d.bestPct===maxBest&&d.bestPct>0;
+    const itmOtm=d.K===atm?'atm':(st.type==='put'?d.K>atm:d.K<atm)?'itm':'otm';
     const badge=`<span class="badge badge-${itmOtm}">${itmOtm.toUpperCase()}</span>`;
-
-    const fmtPct=(v)=>{
-      const cl=v>0?'up':v<0?'dn':'neu';
-      return `<span class="${cl}">${v>0?'+':''}${v.toFixed(1)}%</span>`;
-    };
     const fmtPnl=(pnl,pct)=>{
       const cl=pnl>0?'up':pnl<0?'dn':'neu';
-      return `<span class="${cl}">${pnl>0?'+':''}₹${Math.abs(pnl).toFixed(2)}</span><br>
-              <span style="font-size:10px">${fmtPct(pct)}</span>`;
+      return `<span class="${cl}">${pnl>0?'+':''}₹${Math.abs(pnl).toFixed(2)}</span>
+              <span style="font-size:10px;color:${pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--text3)'};margin-left:4px">(${pct>0?'+':''}${pct.toFixed(0)}%)</span>`;
     };
-
     const tr=document.createElement('tr');
     if(isBest) tr.className='best-row';
     tr.innerHTML=`
-      <td><b>₹${d.K.toLocaleString('en-IN')}</b>${badge}${isBest?'<span class="best-tag">★ Best ROM</span>':''}</td>
+      <td><b>₹${d.K.toLocaleString('en-IN')}</b>${badge}${isBest?'<span class="best-tag">★ Best</span>':''}</td>
       <td>₹${d.todayVal.toFixed(2)}</td>
       <td>₹${d.breakeven.toLocaleString('en-IN')}</td>
       <td>${fmtPnl(d.bestPnl,d.bestPct)}</td>
@@ -409,11 +429,11 @@ function buildTable({datasets,atm}){
 }
 
 // ── Live data ─────────────────────────────────────────────────────────
-async function fetchLive(){
+async function fetchLive(silent=false){
   const btn=document.getElementById('btn-live');
   const errEl=document.getElementById('live-err');
   btn.disabled=true; btn.textContent='⟳ Fetching…';
-  errEl.style.display='none';
+  if(!silent) errEl.style.display='none';
   try{
     const [mkt,chain]=await Promise.all([
       fetch('/api/market').then(r=>r.json()),
@@ -423,32 +443,35 @@ async function fetchLive(){
     dot.className='dot '+(mkt.market_open?'open':'closed');
     const vs=document.getElementById('v-status');
     vs.textContent=mkt.market_open?'Open':'Closed';
-    vs.style.color=mkt.market_open?'#10B981':'#EF4444';
+    vs.style.color=mkt.market_open?'var(--green)':'var(--red)';
     if(mkt.spot) document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN');
     if(mkt.vix)  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1);
     const spot=chain.spot||mkt.spot;
-    if(spot)           flashSet('i-spot',spot,'spot');
-    if(chain.atm_iv)  {document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%'; flashSet('i-iv',chain.atm_iv,'iv');}
+    if(spot){ flashSet('i-spot',spot,'spot'); }
+    if(chain.atm_iv){ document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%'; flashSet('i-iv',chain.atm_iv,'iv'); }
     if(chain.atm_strike) flashSet('i-strike',chain.atm_strike,'strike');
     if(chain.expiry){
+      // Match to nearest Tuesday in dropdown
+      const sel=document.getElementById('i-expiry');
       const p=new Date(chain.expiry.replace(/-/g,' '));
       if(!isNaN(p)){
         const iso=p.toISOString().split('T')[0];
-        flashSet('i-expiry',iso,'expiry');
-        document.getElementById('v-expiry').textContent=chain.expiry;
+        // Find closest option
+        let best=sel.options[0];
+        for(const opt of sel.options){ if(opt.value>=iso){best=opt;break;} }
+        sel.value=best.value; st.expiry=best.value;
+        document.getElementById('v-expiry').textContent=best.textContent;
         document.getElementById('pill-exp').style.display='flex';
-        if(!st.tdLate)  { document.getElementById('i-tdlate').value=iso;  st.tdLate=iso; }
-        if(!st.tdEarly) { const e=new Date(p); e.setDate(e.getDate()-3); document.getElementById('i-tdearly').value=e.toISOString().split('T')[0]; st.tdEarly=e.toISOString().split('T')[0]; }
+        updateSliderLabels();
       }
     }
-    if(chain.error){ errEl.textContent='⚠ '+chain.error; errEl.style.display='block'; }
+    if(chain.error&&!silent){ errEl.textContent='⚠ '+chain.error; errEl.style.display='block'; }
     document.getElementById('live-ts').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    buildStrikePills(); refresh();
+    buildStrikePills(); autoFillTargets(); refresh();
   }catch(e){
-    errEl.textContent='⚠ Could not reach server.'; errEl.style.display='block';
-  }finally{ btn.disabled=false; btn.textContent='⟳ Load Live Data'; }
+    if(!silent){ errEl.textContent='⚠ Could not reach server.'; errEl.style.display='block'; }
+  }finally{ btn.disabled=false; btn.textContent='⟳ Refresh'; }
 }
-
 function flashSet(id,val,key){
   const el=document.getElementById(id); if(!el) return;
   el.value=val; st[key]=typeof val==='string'?val:parseFloat(val);
@@ -456,8 +479,12 @@ function flashSet(id,val,key){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
+buildExpiryDropdown();
 buildStrikePills();
+autoFillTargets();
+updateSliderLabels();
 refresh();
+fetchLive(true);
 </script>
 </body>
 </html>
