@@ -1,14 +1,3 @@
----
-title: Option PnL Surface
-emoji: 📈
-colorFrom: blue
-colorTo: green
-sdk: gradio
-sdk_version: 4.44.0
-app_file: app.py
-pinned: false
----
-
 # Option P&L Surface
 
 Interactive Black-Scholes option pricing and P&L heatmap for Nifty options.
