@@ -252,21 +252,25 @@ function autoFillTargets(){
 
 // ── Slider helpers ────────────────────────────────────────────────────
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const SLOTS=[{h:9,m:15,lbl:'Open'},{h:12,m:0,lbl:'Noon'},{h:15,m:30,lbl:'Close'}];
+function sliderToDateTime(val){
+  const dayOff=Math.floor(val/3),slot=SLOTS[val%3];
+  const d=new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+dayOff);
+  d.setHours(slot.h,slot.m,0,0);
+  return d;
+}
 function fmtDate(d){
-  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+DOW[d.getDay()];
+  const slot=SLOTS.find(s=>s.h===d.getHours()&&s.m===d.getMinutes());
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+DOW[d.getDay()]+(slot?' · '+slot.lbl:'');
 }
 function totalDays(){
   const exp=new Date(st.expiry+'T00:00:00');
   const today=new Date(); today.setHours(0,0,0,0);
   return Math.max(Math.round((exp-today)/86400000),1);
 }
-function sliderToDate(days){
-  const d=new Date(); d.setHours(0,0,0,0);
-  d.setDate(d.getDate()+parseInt(days));
-  return d;
-}
 function updateSliderLabels(){
-  const max=totalDays();
+  const max=totalDays()*3;
   ['early','late'].forEach(k=>{
     const el=document.getElementById('sl-'+k);
     el.max=max;
@@ -274,13 +278,13 @@ function updateSliderLabels(){
     el.value=Math.min(parseInt(el.value),max);
     if(k==='early') st.earlyDays=parseInt(el.value);
     else st.lateDays=parseInt(el.value);
-    document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDate(el.value));
+    document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDateTime(el.value));
   });
 }
 function onSlider(k,v){
   if(k==='early') st.earlyDays=parseInt(v);
   else st.lateDays=parseInt(v);
-  document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDate(v));
+  document.getElementById('sl-'+k+'-lbl').textContent=fmtDate(sliderToDateTime(v));
   refresh();
 }
 
@@ -336,8 +340,8 @@ function computeAll(){
   const bestSpot  = type==='put'?Math.min(optSpot,conSpot):Math.max(optSpot,conSpot);
   const worstSpot = type==='put'?Math.max(optSpot,conSpot):Math.min(optSpot,conSpot);
 
-  const eDate=sliderToDate(earlyDays); eDate.setHours(15,30,0,0);
-  const lDate=sliderToDate(lateDays);  lDate.setHours(15,30,0,0);
+  const eDate=sliderToDateTime(earlyDays);
+  const lDate=sliderToDateTime(lateDays);
   const T_best =Math.max((expiry-eDate)/(365*24*3600*1000),0);
   const T_worst=Math.max((expiry-lDate)/(365*24*3600*1000),0);
 
