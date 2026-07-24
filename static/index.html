@@ -247,7 +247,8 @@ function buildExpiryDropdown(){
   while(d.getDay()!==2) d.setDate(d.getDate()+1);
   for(let i=0;i<12;i++){
     const opt=document.createElement('option');
-    opt.value=d.toISOString().split('T')[0];
+    const yy=d.getFullYear(),mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+    opt.value=`${yy}-${mm}-${dd}`;
     opt.textContent=`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} (${DOW2[d.getDay()]})`;
     sel.appendChild(opt);
     d.setDate(d.getDate()+7);
@@ -280,7 +281,8 @@ function fmtDateTime(d){
   return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+DOW[d.getDay()]+(slot?' · '+slot.lbl:'');
 }
 function totalDays(){
-  const exp=new Date(st.expiry+'T00:00:00');
+  const [ey,em,ed]=st.expiry.split('-').map(Number);
+  const exp=new Date(ey,em-1,ed);
   const today=new Date(); today.setHours(0,0,0,0);
   return Math.max(Math.round((exp-today)/86400000),1);
 }
