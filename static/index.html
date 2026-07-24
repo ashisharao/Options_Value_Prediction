@@ -371,17 +371,13 @@ function refresh(){
       datasets:[
         {label:'Optimistic P&L %',
          data:datasets.map(d=>r2(d.bestPct)),
-         // Dataset 1 — Optimistic (always green)
-         backgroundColor: datasets.map(d => d.bestPct >= 0 ? 'rgba(16,185,129,0.65)' : 'rgba(16,185,129,0.25)'),
-         borderColor: '#10B981',
-         // Dataset 2 — Conservative (always blue)
-         backgroundColor: datasets.map(d => d.worstPct >= 0 ? 'rgba(96,165,250,0.65)' : 'rgba(96,165,250,0.25)'),
-         borderColor: '#60A5FA',
+         backgroundColor:datasets.map(d=>d.bestPct>=0?'rgba(16,185,129,0.65)':'rgba(16,185,129,0.2)'),
+         borderColor:'#10B981',
          borderWidth:1,borderRadius:4},
         {label:'Conservative P&L %',
          data:datasets.map(d=>r2(d.worstPct)),
-         backgroundColor:datasets.map(d=>d.worstPct>0?'rgba(96,165,250,0.65)':'rgba(239,68,68,0.35)'),
-         borderColor:datasets.map(d=>d.worstPct>0?'#60A5FA':'#EF4444'),
+         backgroundColor:datasets.map(d=>d.worstPct>=0?'rgba(96,165,250,0.65)':'rgba(96,165,250,0.2)'),
+         borderColor:'#60A5FA',
          borderWidth:1,borderRadius:4},
       ]
     },
