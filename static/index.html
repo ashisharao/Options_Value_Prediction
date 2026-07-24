@@ -270,7 +270,7 @@ function totalDays(){
   return Math.max(Math.round((exp-today)/86400000),1);
 }
 function updateSliderLabels(){
-  const max=totalDays()*3;
+  const max=totalDays()*3+2;
   ['early','late'].forEach(k=>{
     const el=document.getElementById('sl-'+k);
     el.max=max;
