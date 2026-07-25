@@ -383,9 +383,7 @@ function onTargetSlider(){
   updateRangeFill(); updateRangeLabels(); refresh();
 }
 function buildDateRangeSlider(){
-  console.log('slot 0 day:', sliderToDateTime(0).getDay(), sliderToDateTime(0).toString());
-  console.log('slot 3 day:', sliderToDateTime(3).getDay(), sliderToDateTime(3).toString());
-  console.log('slot 6:', sliderToDateTime(6).getDay(), sliderToDateTime(6).toString());
+  if(!st.expiry) return;
   const max=totalDays()*3+2;
   const loEl=document.getElementById('sl-date-low');
   const hiEl=document.getElementById('sl-date-high');
