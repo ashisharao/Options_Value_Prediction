@@ -275,7 +275,7 @@ function buildExpiryDropdown(){
     d.setDate(d.getDate()+7);
   }
   st.expiry=sel.value;
-  updateSliderLabels();
+  buildDateRangeSlider();
 }
 
 // ── State ──────────────────────────────────────────────────────────────
@@ -307,7 +307,6 @@ function totalDays(){
   const today=new Date(); today.setHours(0,0,0,0);
   return Math.max(Math.round((exp-today)/86400000),1);
 }
-function updateSliderLabels(){ buildDateRangeSlider(); }
 
 // ── Market-aware samples ───────────────────────────────────────────────
 function toIST(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}))}
@@ -389,15 +388,22 @@ function buildDateRangeSlider(){
   const hiEl=document.getElementById('sl-date-high');
   if(!loEl||!hiEl) return;
   loEl.min=hiEl.min=0; loEl.max=hiEl.max=max;
-  // Default: early = 50% through, late = expiry
-  if(parseInt(loEl.value)===0||parseInt(loEl.value)>max)
-    loEl.value=Math.floor(max*0.5);
+
+  // Find first valid market slot (skip weekends from today)
+  let firstSlot=0;
+  for(let i=0;i<=max;i++){
+    const d=sliderToDateTime(i);
+    const day=d.getDay();
+    if(day>0&&day<6){firstSlot=i;break;}
+  }
+  loEl.value=firstSlot;
   hiEl.value=max;
-  st.earlyDays=parseInt(loEl.value);
-  st.lateDays=parseInt(hiEl.value);
+  st.earlyDays=firstSlot;
+  st.lateDays=max;
+
   updateDateFill();
-  document.getElementById('date-low-lbl').textContent=fmtDateTime(sliderToDateTime(loEl.value));
-  document.getElementById('date-high-lbl').textContent=fmtDateTime(sliderToDateTime(hiEl.value));
+  document.getElementById('date-low-lbl').textContent=fmtDateTime(sliderToDateTime(firstSlot));
+  document.getElementById('date-high-lbl').textContent=fmtDateTime(sliderToDateTime(max));
 }
 function onDateRangeSlider(){
   const loEl=document.getElementById('sl-date-low');
@@ -426,7 +432,7 @@ function updateDateFill(){
 
 // ── Inputs ────────────────────────────────────────────────────────────
 function onInput(key,val){
-  if(key==='expiry'){st[key]=val||null;updateSliderLabels();}
+  if(key==='expiry'){st[key]=val||null;buildDateRangeSlider();}
   else{const v=parseFloat(val);st[key]=(!isNaN(v)&&v>0)?v:null;}
   if(['spot','strike','step'].includes(key)){buildStrikePills();buildTargetSlider();}
   refresh();
@@ -728,7 +734,7 @@ async function fetchLive(silent=false){
         sel.value=best.value; st.expiry=best.value;
         document.getElementById('v-expiry').textContent=best.textContent;
         document.getElementById('pill-exp').style.display='flex';
-        updateSliderLabels();
+        buildDateRangeSlider();
       }
     }
     if(chain.error&&!silent){errEl.textContent='⚠ '+chain.error;errEl.style.display='block';}
@@ -749,7 +755,6 @@ function flashSet(id,val,key){
 buildExpiryDropdown();
 buildStrikePills();
 buildTargetSlider();
-updateSliderLabels();
 buildDateRangeSlider()
 refresh();
 fetchLive(true);
