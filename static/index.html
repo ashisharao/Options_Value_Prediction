@@ -102,6 +102,19 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 .decay-card .dsub{font-size:10px;color:var(--text4);margin-top:2px}
 
 .foot{font-size:10px;color:var(--text4);text-align:center;line-height:1.7;margin-top:4px}
+.range-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:8px}
+.range-wrap .rlbl{display:block;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.range-track-container{position:relative;height:20px;margin:0 8px}
+.range-track{position:absolute;top:50%;transform:translateY(-50%);width:100%;height:4px;background:var(--bg3);border-radius:2px}
+.range-fill{position:absolute;height:4px;background:var(--accent);border-radius:2px;top:0}
+.range-thumb{position:absolute;width:100%;top:50%;transform:translateY(-50%);pointer-events:none;-webkit-appearance:none;appearance:none;background:transparent;margin:0;height:4px;outline:none}
+.range-thumb::-webkit-slider-thumb{pointer-events:all;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.range-thumb::-moz-range-thumb{pointer-events:all;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.range-vals{display:flex;justify-content:space-between;margin-top:10px;align-items:center}
+.rv-price{font-family:monospace;font-size:14px;font-weight:700;color:var(--text)}
+.rv-tag{font-size:9px;padding:1px 6px;border-radius:3px;font-family:sans-serif;display:inline-block;margin-top:2px}
+.tag-agg{background:rgba(16,185,129,0.15);color:var(--green)}
+.tag-con{background:rgba(96,165,250,0.15);color:var(--blue)}
 </style>
 </head>
 <body>
@@ -155,9 +168,18 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 <!-- Tab 1: Strike Selector -->
 <div id="tab-selector" class="tab-content on">
   <div class="section-label">Your Scenario</div>
-  <div class="cg cg-2" style="margin-bottom:8px">
-    <div class="ctrl"><label>Optimistic Target (₹) · <span id="opt-hint" style="color:var(--accent)">bigger move</span></label><input id="i-tp1" type="number" step="50" oninput="onInput('tp1',this.value)"></div>
-    <div class="ctrl"><label>Conservative Target (₹) · <span id="con-hint" style="color:var(--text4)">smaller move</span></label><input id="i-tp2" type="number" step="50" oninput="onInput('tp2',this.value)"></div>
+  <div class="range-wrap">
+    <span class="rlbl">Target Price Range · <span id="range-hint" style="color:var(--accent)">lower = aggressive for Put</span></span>
+    <div class="range-track-container">
+      <div class="range-track"><div class="range-fill" id="range-fill"></div></div>
+      <input type="range" class="range-thumb" id="sl-tp-low"  step="50" oninput="onTargetSlider()">
+      <input type="range" class="range-thumb" id="sl-tp-high" step="50" oninput="onTargetSlider()">
+    </div>
+    <div class="range-vals">
+      <div><div class="rv-price" id="tp-low-lbl">—</div><div id="tp-low-tag"></div></div>
+      <span style="font-size:10px;color:var(--text4)">↔ Target Range</span>
+      <div style="text-align:right"><div class="rv-price" id="tp-high-lbl">—</div><div id="tp-high-tag"></div></div>
+    </div>
   </div>
   <div class="cg cg-2" style="margin-bottom:8px">
     <div class="slider-wrap">
@@ -328,32 +350,70 @@ function parseMarketSamples(){
 }
 
 // ── Auto-fill targets ─────────────────────────────────────────────────
-function autoFillTargets(){
-  const{spot,step,type}=st;
-  if(!spot||!step) return;
-  const s=step;
-  st.tp1=type==='put'?Math.round(spot*0.97/s)*s:Math.round(spot*1.03/s)*s;
-  st.tp2=type==='put'?Math.round(spot*0.99/s)*s:Math.round(spot*1.01/s)*s;
-  const e1=document.getElementById('i-tp1'),e2=document.getElementById('i-tp2');
-  if(e1) e1.value=st.tp1;
-  if(e2) e2.value=st.tp2;
-  const hint=type==='put'?'↓ lower':'↑ higher';
-  document.getElementById('opt-hint').textContent='bigger move '+hint;
-  document.getElementById('con-hint').textContent='smaller move '+hint;
+function buildTargetSlider(){
+  const spot=st.spot||24300, step=st.step||50;
+  const rng=Math.round(spot*0.12/step)*step;
+  const min=Math.round((spot-rng)/step)*step;
+  const max=Math.round((spot+rng)/step)*step;
+  const loEl=document.getElementById('sl-tp-low');
+  const hiEl=document.getElementById('sl-tp-high');
+  loEl.min=hiEl.min=min; loEl.max=hiEl.max=max;
+  // Default: put → low=−3%, high=−1%; call → low=+1%, high=+3%
+  loEl.value=st.type==='put'?Math.round(spot*0.97/step)*step:Math.round(spot*1.01/step)*step;
+  hiEl.value=st.type==='put'?Math.round(spot*0.99/step)*step:Math.round(spot*1.03/step)*step;
+  st.tp1=parseFloat(loEl.value); st.tp2=parseFloat(hiEl.value);
+  updateRangeFill(); updateRangeLabels();
+}
+function updateRangeFill(){
+  const lo=document.getElementById('sl-tp-low');
+  const hi=document.getElementById('sl-tp-high');
+  const fill=document.getElementById('range-fill');
+  if(!lo||!hi||!fill) return;
+  const min=parseFloat(lo.min),max=parseFloat(lo.max);
+  const lp=(parseFloat(lo.value)-min)/(max-min)*100;
+  const hp=(parseFloat(hi.value)-min)/(max-min)*100;
+  fill.style.left=lp+'%'; fill.style.width=(hp-lp)+'%';
+}
+function updateRangeLabels(){
+  const lo=st.tp1||0,hi=st.tp2||0;
+  const isPut=st.type==='put';
+  document.getElementById('tp-low-lbl').textContent='₹'+lo.toLocaleString('en-IN');
+  document.getElementById('tp-high-lbl').textContent='₹'+hi.toLocaleString('en-IN');
+  document.getElementById('tp-low-tag').innerHTML=isPut
+    ?'<span class="rv-tag tag-agg">Aggressive</span>'
+    :'<span class="rv-tag tag-con">Conservative</span>';
+  document.getElementById('tp-high-tag').innerHTML=isPut
+    ?'<span class="rv-tag tag-con">Conservative</span>'
+    :'<span class="rv-tag tag-agg">Aggressive</span>';
+  document.getElementById('range-hint').textContent=isPut
+    ?'lower = aggressive · upper = conservative'
+    :'upper = aggressive · lower = conservative';
+}
+function onTargetSlider(){
+  const loEl=document.getElementById('sl-tp-low');
+  const hiEl=document.getElementById('sl-tp-high');
+  let lo=parseFloat(loEl.value),hi=parseFloat(hiEl.value);
+  const step=st.step||50;
+  if(lo>=hi){
+    if(document.activeElement===loEl){lo=hi-step;loEl.value=lo;}
+    else{hi=lo+step;hiEl.value=hi;}
+  }
+  st.tp1=lo; st.tp2=hi;
+  updateRangeFill(); updateRangeLabels(); refresh();
 }
 
 // ── Inputs ────────────────────────────────────────────────────────────
 function onInput(key,val){
   if(key==='expiry'){st[key]=val||null;updateSliderLabels();}
   else{const v=parseFloat(val);st[key]=(!isNaN(v)&&v>0)?v:null;}
-  if(['spot','strike','step'].includes(key)){buildStrikePills();autoFillTargets();}
+  if(['spot','strike','step'].includes(key)){buildStrikePills();buildTargetSlider();}
   refresh();
 }
 function setType(t){
   st.type=t;
   document.getElementById('btn-call').classList.toggle('on',t==='call');
   document.getElementById('btn-put').classList.toggle('on',t==='put');
-  autoFillTargets(); refresh();
+  buildTargetSlider(); refresh();
 }
 
 // ── Strike pills ──────────────────────────────────────────────────────
@@ -651,11 +711,12 @@ async function fetchLive(silent=false){
     }
     if(chain.error&&!silent){errEl.textContent='⚠ '+chain.error;errEl.style.display='block';}
     document.getElementById('live-ts').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    buildStrikePills(); autoFillTargets(); refresh();
+    buildStrikePills(); buildTargetSlider(); refresh();
   }catch(e){
     if(!silent){const errEl=document.getElementById('live-err');errEl.textContent='⚠ Could not reach server.';errEl.style.display='block';}
   }finally{btn.disabled=false;btn.textContent='⟳ Refresh';}
 }
+
 function flashSet(id,val,key){
   const el=document.getElementById(id);if(!el)return;
   el.value=val;st[key]=typeof val==='string'?val:parseFloat(val);
@@ -665,7 +726,7 @@ function flashSet(id,val,key){
 // ── Init ──────────────────────────────────────────────────────────────
 buildExpiryDropdown();
 buildStrikePills();
-autoFillTargets();
+buildTargetSlider();
 updateSliderLabels();
 refresh();
 fetchLive(true);
