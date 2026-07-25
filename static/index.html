@@ -221,12 +221,21 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 <!-- Tab 2: Time Value Decay -->
 <div id="tab-decay" class="tab-content">
   <div class="decay-info" id="decay-info"></div>
+  <div class="row" style="margin-bottom:6px">
+    <div class="twrap">
+      <label>Line Chart Y Axis</label>
+      <div class="tg">
+        <button id="btn-decay-abs" class="on" onclick="setDecayMode('abs')">Value (₹)</button>
+        <button id="btn-decay-norm" onclick="setDecayMode('norm')">Normalised (100→0)</button>
+      </div>
+    </div>
+  </div>
   <div class="chart-wrap" style="height:200px">
     <div class="chart-title">Time value lost per session (₹) · theta in each Open / Noon / Close slot</div>
     <canvas id="decay-bar-chart" style="max-height:170px"></canvas>
   </div>
   <div class="chart-wrap" style="height:280px">
-    <div class="chart-title">Time value (₹) vs time · spot held at ₹<span id="spot-label2">24300</span> · converges to zero at expiry</div>
+    <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label2">24300</span> · converges to intrinsic at expiry</div>
     <canvas id="decay-chart" style="max-height:250px"></canvas>
   </div>
 </div>
@@ -280,7 +289,7 @@ function buildExpiryDropdown(){
 
 // ── State ──────────────────────────────────────────────────────────────
 let st={spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
-        type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21};
+        type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
 let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
 let selectorChart=null, decayChart=null, decayBarChart=null;
@@ -430,6 +439,12 @@ function updateDateFill(){
   const hp=(parseFloat(hiEl.value)-min)/max*100;
   fill.style.left=lp+'%'; fill.style.width=(hp-lp)+'%';
 }
+function setDecayMode(m){
+  st.decayMode=m;
+  document.getElementById('btn-decay-abs').classList.toggle('on',m==='abs');
+  document.getElementById('btn-decay-norm').classList.toggle('on',m==='norm');
+  buildDecayCharts();
+}
 
 // ── Inputs ────────────────────────────────────────────────────────────
 function onInput(key,val){
@@ -572,10 +587,14 @@ function buildDecayCharts(){
 
   // Build time value curves
   const tvDatasets=strikes.map((K,i)=>{
-    const vals=dates.map(d=>{
+    const rawVals=dates.map(d=>{
       const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
-      return timeVal(spot,K,T,r,sig,type);
+      return r2(bs(spot,K,T,r,sig,type));
     });
+    const base=rawVals[0]||1;
+    const vals=st.decayMode==='norm'
+      ? rawVals.map(v=>base>0?r2(v/base*100):0)
+      : rawVals;
     return{
       label:'₹'+K.toLocaleString('en-IN'),
       data:vals,
@@ -608,7 +627,7 @@ function buildDecayCharts(){
       scales:{
         x:{ticks:{color:'#D1D5DB',maxTicksLimit:12,maxRotation:0,font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'}},
         y:{ticks:{color:'#D1D5DB',callback:v=>'₹'+v,font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
-           title:{display:true,text:'Time value (₹)',color:'#9CA3AF',font:{size:10}}}
+           title:{display:true,text:st.decayMode==='norm'?'Normalised value (100 = today)':'Option value (₹)',color:'#9CA3AF',font:{size:10}}}
       }
     }
   });
@@ -672,7 +691,7 @@ function buildDecayCharts(){
       },
       scales:{
         x:{ticks:{color:'#9CA3AF',maxTicksLimit:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(55,65,81,0.3)'},border:{color:'#374151'}},
-        y:{ticks:{color:'#D1D5DB',callback:v=>'₹'+v,font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
+        y:{ticks:{color:'#D1D5DB',callback:v=>st.decayMode==='norm'?v:'₹'+v,,font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
            title:{display:true,text:'Time value lost (₹)',color:'#9CA3AF',font:{size:10}}}
       }
     }
