@@ -385,6 +385,7 @@ function onTargetSlider(){
 function buildDateRangeSlider(){
   console.log('slot 0 day:', sliderToDateTime(0).getDay(), sliderToDateTime(0).toString());
   console.log('slot 3 day:', sliderToDateTime(3).getDay(), sliderToDateTime(3).toString());
+  console.log('slot 6:', sliderToDateTime(6).getDay(), sliderToDateTime(6).toString());
   const max=totalDays()*3+2;
   const loEl=document.getElementById('sl-date-low');
   const hiEl=document.getElementById('sl-date-high');
@@ -396,7 +397,7 @@ function buildDateRangeSlider(){
   for(let i=0;i<=max;i++){
     const d=sliderToDateTime(i);
     const day=d.getDay();
-    if(day>0&&day<6){firstSlot=i;break;}
+    if(day>=1&&day<=5){firstSlot=i;break;}
   }
   loEl.value=firstSlot;
   hiEl.value=max;
