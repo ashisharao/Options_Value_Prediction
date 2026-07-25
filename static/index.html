@@ -662,14 +662,16 @@ function buildDecayCharts(){
   const T_now=Math.max((expiryEnd-now)/(365*24*3600*1000),0);
   const info=document.getElementById('decay-info');
   info.innerHTML=strikes.map((K,i)=>{
-    const tv=timeVal(spot,K,T_now,r,sig,type);
     const price=r2(bs(spot,K,T_now,r,sig,type));
     const intr=intrinsic(spot,K,type);
-    const tvPct=price>0?r2(tv/price*100):0;
+    const tv=r2(price-intr);
+    const tvPct=price>0?r2(Math.abs(tv)/price*100):0;
+    const tvCol=tv>=0?PALETTE[i%PALETTE.length]:'var(--red)';
+    const tvNote=tv<0?'deep ITM discount':`${tvPct}% of ₹${price.toFixed(2)}`;
     return`<div class="decay-card">
       <div class="dlbl" style="color:${PALETTE[i%PALETTE.length]}">₹${K.toLocaleString('en-IN')}</div>
-      <div class="dval" style="color:${PALETTE[i%PALETTE.length]}">₹${tv.toFixed(2)}</div>
-      <div class="dsub">time value · ${tvPct}% of ₹${price.toFixed(2)}</div>
+      <div class="dval" style="color:${tvCol}">₹${tv.toFixed(2)}</div>
+      <div class="dsub">time value · ${tvNote}</div>
       <div class="dsub">intrinsic: ₹${intr.toFixed(2)}</div>
     </div>`;
   }).join('');
