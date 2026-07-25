@@ -168,32 +168,31 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 <!-- Tab 1: Strike Selector -->
 <div id="tab-selector" class="tab-content on">
   <div class="section-label">Your Scenario</div>
-  <div class="range-wrap">
-    <span class="rlbl">Target Price Range · <span id="range-hint" style="color:var(--accent)">lower = aggressive for Put</span></span>
-    <div class="range-track-container">
-      <div class="range-track"><div class="range-fill" id="range-fill"></div></div>
-      <input type="range" class="range-thumb" id="sl-tp-low"  step="50" oninput="onTargetSlider()">
-      <input type="range" class="range-thumb" id="sl-tp-high" step="50" oninput="onTargetSlider()">
-    </div>
-    <div class="range-vals">
-      <div><div class="rv-price" id="tp-low-lbl">—</div><div id="tp-low-tag"></div></div>
-      <span style="font-size:10px;color:var(--text4)">↔ Target Range</span>
-      <div style="text-align:right"><div class="rv-price" id="tp-high-lbl">—</div><div id="tp-high-tag"></div></div>
-    </div>
-  </div>
   <div class="cg cg-2" style="margin-bottom:8px">
-    <div class="slider-wrap">
-      <label>Move Expected By — Early Date</label>
-      <div class="slider-row">
-        <input type="range" id="sl-early" min="0" max="21" value="14" oninput="onSlider('early',this.value)">
-        <span class="slider-date" id="sl-early-lbl">—</span>
+    <div class="range-wrap">
+      <span class="rlbl">Target Price Range · <span id="range-hint" style="color:var(--accent)">lower = aggressive for Put</span></span>
+      <div class="range-track-container">
+        <div class="range-track"><div class="range-fill" id="range-fill"></div></div>
+        <input type="range" class="range-thumb" id="sl-tp-low"  step="50" oninput="onTargetSlider()">
+        <input type="range" class="range-thumb" id="sl-tp-high" step="50" oninput="onTargetSlider()">
+      </div>
+      <div class="range-vals">
+        <div><div class="rv-price" id="tp-low-lbl">—</div><div id="tp-low-tag"></div></div>
+        <span style="font-size:10px;color:var(--text4)">↔ Price</span>
+        <div style="text-align:right"><div class="rv-price" id="tp-high-lbl">—</div><div id="tp-high-tag"></div></div>
       </div>
     </div>
-    <div class="slider-wrap">
-      <label>Move Expected By — Late Date</label>
-      <div class="slider-row">
-        <input type="range" id="sl-late" min="0" max="21" value="21" oninput="onSlider('late',this.value)">
-        <span class="slider-date" id="sl-late-lbl">—</span>
+    <div class="range-wrap">
+      <span class="rlbl">Target Date Range</span>
+      <div class="range-track-container">
+        <div class="range-track"><div class="range-fill" id="date-fill"></div></div>
+        <input type="range" class="range-thumb" id="sl-date-low"  step="1" oninput="onDateRangeSlider()">
+        <input type="range" class="range-thumb" id="sl-date-high" step="1" oninput="onDateRangeSlider()">
+      </div>
+      <div class="range-vals">
+        <div><div class="rv-price" id="date-low-lbl" style="font-size:11px">—</div><div class="rv-tag tag-con" style="font-size:9px">Early</div></div>
+        <span style="font-size:10px;color:var(--text4)">↔ Date</span>
+        <div style="text-align:right"><div class="rv-price" id="date-high-lbl" style="font-size:11px">—</div><div class="rv-tag tag-agg" style="font-size:9px">Late</div></div>
       </div>
     </div>
   </div>
@@ -308,24 +307,7 @@ function totalDays(){
   const today=new Date(); today.setHours(0,0,0,0);
   return Math.max(Math.round((exp-today)/86400000),1);
 }
-function updateSliderLabels(){
-  const max=totalDays()*3+2;
-  ['early','late'].forEach(k=>{
-    const el=document.getElementById('sl-'+k);
-    el.max=max;
-    if(k==='late') el.value=max;
-    el.value=Math.min(parseInt(el.value),max);
-    if(k==='early') st.earlyDays=parseInt(el.value);
-    else st.lateDays=parseInt(el.value);
-    document.getElementById('sl-'+k+'-lbl').textContent=fmtDateTime(sliderToDateTime(el.value));
-  });
-}
-function onSlider(k,v){
-  if(k==='early') st.earlyDays=parseInt(v);
-  else st.lateDays=parseInt(v);
-  document.getElementById('sl-'+k+'-lbl').textContent=fmtDateTime(sliderToDateTime(v));
-  refresh();
-}
+function updateSliderLabels(){ buildDateRangeSlider(); }
 
 // ── Market-aware samples ───────────────────────────────────────────────
 function toIST(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}))}
@@ -400,6 +382,46 @@ function onTargetSlider(){
   }
   st.tp1=lo; st.tp2=hi;
   updateRangeFill(); updateRangeLabels(); refresh();
+}
+function buildDateRangeSlider(){
+  const max=totalDays()*3+2;
+  const loEl=document.getElementById('sl-date-low');
+  const hiEl=document.getElementById('sl-date-high');
+  if(!loEl||!hiEl) return;
+  loEl.min=hiEl.min=0; loEl.max=hiEl.max=max;
+  // Default: early = 50% through, late = expiry
+  if(parseInt(loEl.value)===0||parseInt(loEl.value)>max)
+    loEl.value=Math.floor(max*0.5);
+  hiEl.value=max;
+  st.earlyDays=parseInt(loEl.value);
+  st.lateDays=parseInt(hiEl.value);
+  updateDateFill();
+  document.getElementById('date-low-lbl').textContent=fmtDateTime(sliderToDateTime(loEl.value));
+  document.getElementById('date-high-lbl').textContent=fmtDateTime(sliderToDateTime(hiEl.value));
+}
+function onDateRangeSlider(){
+  const loEl=document.getElementById('sl-date-low');
+  const hiEl=document.getElementById('sl-date-high');
+  let lo=parseInt(loEl.value),hi=parseInt(hiEl.value);
+  if(lo>=hi){
+    if(document.activeElement===loEl){lo=Math.max(0,hi-1);loEl.value=lo;}
+    else{hi=Math.min(parseInt(hiEl.max),lo+1);hiEl.value=hi;}
+  }
+  st.earlyDays=lo; st.lateDays=hi;
+  updateDateFill();
+  document.getElementById('date-low-lbl').textContent=fmtDateTime(sliderToDateTime(lo));
+  document.getElementById('date-high-lbl').textContent=fmtDateTime(sliderToDateTime(hi));
+  refresh();
+}
+function updateDateFill(){
+  const loEl=document.getElementById('sl-date-low');
+  const hiEl=document.getElementById('sl-date-high');
+  const fill=document.getElementById('date-fill');
+  if(!loEl||!hiEl||!fill) return;
+  const min=0,max=parseFloat(loEl.max);
+  const lp=(parseFloat(loEl.value)-min)/max*100;
+  const hp=(parseFloat(hiEl.value)-min)/max*100;
+  fill.style.left=lp+'%'; fill.style.width=(hp-lp)+'%';
 }
 
 // ── Inputs ────────────────────────────────────────────────────────────
@@ -728,6 +750,7 @@ buildExpiryDropdown();
 buildStrikePills();
 buildTargetSlider();
 updateSliderLabels();
+buildDateRangeSlider()
 refresh();
 fetchLive(true);
 </script>
