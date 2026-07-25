@@ -613,25 +613,39 @@ function buildDecayCharts(){
     }
   });
 
-  // Per-session theta bar chart: one bar per session = TV[i-1] - TV[i]
-  // Thin out — show every session drop as a stacked or grouped bar per strike
-  // Use only slot boundaries (every 3rd sample = session boundaries)
-  const sessionLabels=[],sessionDrops=strikes.map(()=>[]);
-  for(let i=1;i<dates.length;i++){
-    const ist=toIST(dates[i]);
-    const m=ist.getHours()*60+ist.getMinutes();
-    const isSlot=m===555||m===720||m===930; // 9:15, 12:00, 15:30
-    if(isSlot){
-      const lbl=dates[i].toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'})
-        +' '+(m===555?'Open':m===720?'Noon':'Close');
-      sessionLabels.push(lbl);
-      strikes.forEach((K,si)=>{
-        const T0=Math.max((expiryEnd-dates[i-1])/(365*24*3600*1000),0);
-        const T1=Math.max((expiryEnd-dates[i])  /(365*24*3600*1000),0);
-        const drop=r2(Math.max(timeVal(spot,K,T0,r,sig,type)-timeVal(spot,K,T1,r,sig,type),0));
-        sessionDrops[si].push(drop);
+  // Build session boundary points from now to expiry
+  const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmtD=d=>{const ist=toIST(d);return `${ist.getDate()} ${MNAMES[ist.getMonth()]} · ${DOW[ist.getDay()]}`;};
+  const now2=new Date();
+  const bndry=[];
+  const tmp=new Date(now2); tmp.setHours(0,0,0,0);
+  while(tmp<=expiryEnd){
+    const day=tmp.getDay();
+    if(day>=1&&day<=5){
+      [[9,15,'open'],[12,0,'noon'],[15,30,'close']].forEach(([h,m,tp])=>{
+        const t=new Date(tmp); t.setHours(h,m,0,0);
+        if(t>=now2&&t<=expiryEnd) bndry.push({t,tp});
       });
     }
+    tmp.setDate(tmp.getDate()+1);
+  }
+
+  // Build intervals between consecutive boundaries
+  const sessionLabels=[],sessionDrops=strikes.map(()=>[]);
+  for(let i=0;i<bndry.length-1;i++){
+    const from=bndry[i],to=bndry[i+1];
+    const fromD=fmtD(from.t),toD=fmtD(to.t);
+    let lbl;
+    if(from.tp==='open'&&to.tp==='noon')       lbl=`${fromD} · Open→Noon`;
+    else if(from.tp==='noon'&&to.tp==='close') lbl=`${fromD} · Noon→Close`;
+    else                                        lbl=`${fromD} Close → ${toD} Open`;
+    sessionLabels.push(lbl);
+    const T0=Math.max((expiryEnd-from.t)/(365*24*3600*1000),0);
+    const T1=Math.max((expiryEnd-to.t) /(365*24*3600*1000),0);
+    strikes.forEach((K,si)=>{
+      const drop=r2(Math.max(timeVal(spot,K,T0,r,sig,type)-timeVal(spot,K,T1,r,sig,type),0));
+      sessionDrops[si].push(drop);
+    });
   }
 
   if(decayBarChart) decayBarChart.destroy();
