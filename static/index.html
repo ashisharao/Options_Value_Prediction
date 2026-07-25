@@ -282,7 +282,7 @@ function buildExpiryDropdown(){
 let st={spot:24300,strike:24300,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21};
 let activeStrikes=new Set();
-const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#FB923C','#4ADE80'];
+const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
 let selectorChart=null, decayChart=null, decayBarChart=null;
 let currentTab='selector';
 
@@ -466,6 +466,13 @@ function buildStrikePills(){
   });
 }
 
+function strikeColor(K){
+  const atm=Math.round((st.strike||st.spot)/st.step)*st.step;
+  const allStrikes=[-3,-2,-1,0,1,2,3].map(i=>atm+i*st.step);
+  const idx=allStrikes.indexOf(K);
+  return PALETTE[idx>=0?idx:0];
+}
+
 // ── Tab switching ──────────────────────────────────────────────────────
 function switchTab(t){
   currentTab=t;
@@ -502,7 +509,7 @@ function computeAll(){
     const worstPct=todayVal>0?r2(worstPnl/todayVal*100):0;
     const breakeven=type==='put'?r2(K-todayVal):r2(K+todayVal);
     const prob=probProfit(spot,K,T_full,r,sig,type);
-    return{K,col:PALETTE[i%PALETTE.length],isATM:K===atm,
+    return{K,col:strikeColor(K),isATM:K===atm,
            todayVal,bestPnl,worstPnl,bestPct,worstPct,breakeven,prob};
   });
   return{datasets,atm};
@@ -572,8 +579,8 @@ function buildDecayCharts(){
     return{
       label:'₹'+K.toLocaleString('en-IN'),
       data:vals,
-      borderColor:PALETTE[i%PALETTE.length],
-      backgroundColor:PALETTE[i%PALETTE.length]+'15',
+      borderColor:strikeColor(K),
+      backgroundColor:strikeColor(K)+'15',
       borderWidth:K===atm?3:1.5,
       pointRadius:0,pointHoverRadius:4,
       tension:0.3,fill:false,
@@ -636,8 +643,8 @@ function buildDecayCharts(){
       datasets:strikes.map((K,i)=>({
         label:'₹'+K.toLocaleString('en-IN'),
         data:sessionDrops[i],
-        backgroundColor:PALETTE[i%PALETTE.length]+'99',
-        borderColor:PALETTE[i%PALETTE.length],
+        backgroundColor:strikeColor(K)+'99',
+        borderColor:strikeColor(K),
         borderWidth:1,borderRadius:2,
       }))
     },
@@ -666,10 +673,10 @@ function buildDecayCharts(){
     const intr=intrinsic(spot,K,type);
     const tv=r2(price-intr);
     const tvPct=price>0?r2(Math.abs(tv)/price*100):0;
-    const tvCol=tv>=0?PALETTE[i%PALETTE.length]:'var(--red)';
+    const tvCol=tv>=0?strikeColor(K):'var(--red)';
     const tvNote=tv<0?'deep ITM discount':`${tvPct}% of ₹${price.toFixed(2)}`;
     return`<div class="decay-card">
-      <div class="dlbl" style="color:${PALETTE[i%PALETTE.length]}">₹${K.toLocaleString('en-IN')}</div>
+      <div class="dlbl" style="color:${strikeColor(K)}">₹${K.toLocaleString('en-IN')}</div>
       <div class="dval" style="color:${tvCol}">₹${tv.toFixed(2)}</div>
       <div class="dsub">time value · ${tvNote}</div>
       <div class="dsub">intrinsic: ₹${intr.toFixed(2)}</div>
