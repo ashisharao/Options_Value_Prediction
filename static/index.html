@@ -206,7 +206,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
     <thead>
       <tr>
         <th>Strike</th>
-        <th>Premium Today</th>
+        <th>Entry Cost (Ask/BS)</th>
         <th>Breakeven</th>
         <th>Optimistic P&L</th>
         <th>Conservative P&L</th>
@@ -314,6 +314,7 @@ function buildExpiryDropdown(){
 // ── State ──────────────────────────────────────────────────────────────
 let st={spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
+let liveStrikes={};  // strike → {bid, ask} from NSE
 let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
 let selectorChart=null, decayChart=null, decayBarChart=null, breakevenChart=null;
@@ -478,10 +479,19 @@ function onInput(key,val){
   refresh();
 }
 function setType(t){
+  liveStrikes={};
   st.type=t;
   document.getElementById('btn-call').classList.toggle('on',t==='call');
   document.getElementById('btn-put').classList.toggle('on',t==='put');
   buildTargetSlider(); refresh();
+}
+
+function entryPrice(K){
+  const live=liveStrikes[K];
+  if(live&&live.ask>0) return{price:live.ask, source:'ask', bid:live.bid, spread:r2(live.ask-live.bid)};
+  const T=Math.max((new Date(st.expiry+'T15:30:00+05:30')-new Date())/(365*24*3600*1000),0);
+  const p=r2(bs(st.spot,K,T,(st.rate||6.5)/100,(st.iv||15)/100,st.type));
+  return{price:p, source:'bs', bid:null, spread:null};
 }
 
 // ── Strike pills ──────────────────────────────────────────────────────
@@ -540,7 +550,10 @@ function computeAll(){
   const T_worst=Math.max((expiry-lDate)/(365*24*3600*1000),0);
 
   const datasets=strikes.map((K,i)=>{
-    const todayVal=r2(bs(spot,K,T_full,r,sig,type));
+    const entry=entryPrice(K);
+    const todayVal=entry.price;
+    const entrySource=entry.source;
+    const entrySpread=entry.spread;
     const bestVal=r2(bs(bestSpot,K,T_best,r,sig,type));
     const worstVal=r2(bs(worstSpot,K,T_worst,r,sig,type));
     const bestPnl=r2(bestVal-todayVal),worstPnl=r2(worstVal-todayVal);
@@ -549,7 +562,8 @@ function computeAll(){
     const breakeven=type==='put'?r2(K-todayVal):r2(K+todayVal);
     const prob=probProfit(spot,K,T_full,r,sig,type);
     return{K,col:strikeColor(K),isATM:K===atm,
-           todayVal,bestPnl,worstPnl,bestPct,worstPct,breakeven,prob};
+           todayVal,entrySource,entrySpread,
+           bestPnl,worstPnl,bestPct,worstPct,breakeven,prob};
   });
   return{datasets,atm};
 }
@@ -827,7 +841,13 @@ function buildTable({datasets,atm}){
     if(isBest) tr.className='best-row';
     tr.innerHTML=`
       <td><b>₹${d.K.toLocaleString('en-IN')}</b>${badge}${isBest?'<span class="best-tag">★ Best</span>':''}</td>
-      <td>₹${d.todayVal.toFixed(2)}</td>
+      <td>
+        ₹${d.todayVal.toFixed(2)}
+        ${d.entrySource==='ask'
+          ?`<span class="badge badge-itm" style="font-size:8px">ASK</span>
+            <div style="font-size:10px;color:var(--text4)">spread ₹${d.entrySpread?.toFixed(2)||'—'}</div>`
+          :`<span class="badge badge-otm" style="font-size:8px">BS</span>`}
+      </td>
       <td>₹${d.breakeven.toLocaleString('en-IN')}</td>
       <td>${fmtPnl(d.bestPnl,d.bestPct)}</td>
       <td>${fmtPnl(d.worstPnl,d.worstPct)}</td>
@@ -875,6 +895,15 @@ async function fetchLive(silent=false){
     }
     if(chain.error&&!silent){errEl.textContent='⚠ '+chain.error;errEl.style.display='block';}
     document.getElementById('live-ts').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    liveStrikes={};
+    if(chain.strikes&&chain.strikes.length){
+      chain.strikes.forEach(s=>{
+        const key=s.strike;
+        liveStrikes[key]=st.type==='put'
+          ?{bid:s.put_bid, ask:s.put_ask, ltp:s.put_ltp}
+          :{bid:s.call_bid, ask:s.call_ask, ltp:s.call_ltp};
+      });
+    }
     buildStrikePills(); buildTargetSlider(); refresh();
   }catch(e){
     if(!silent){const errEl=document.getElementById('live-err');errEl.textContent='⚠ Could not reach server.';errEl.style.display='block';}
