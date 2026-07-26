@@ -403,6 +403,8 @@ let st={spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
 let liveStrikes={};  // strike → {bid, ask} from NSE
 let liveIV={};  // strike → IV as decimal e.g. 0.142
+let liveStrikesByExpiry={};  // expiry → {strike → {bid,ask,ltp}}
+let liveIVByExpiry={};       // expiry → {strike → IV decimal}
 let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
 let selectorChart=null, decayChart=null, decayBarChart=null, breakevenChart=null;
@@ -621,7 +623,10 @@ function switchTab(t){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',i===tabs.indexOf(t)));
   tabs.forEach(id=>document.getElementById('tab-'+id).classList.toggle('on',id===t));
   if(t==='decay') buildDecayCharts();
-  if(t==='positions') buildPositionsTab();
+  if(t==='positions'){
+    buildPositionsTab();
+    if(positions.length) fetchAllPositionChains();
+}
 }
 
 // ── Compute selector ──────────────────────────────────────────────────
@@ -1010,11 +1015,38 @@ async function fetchLive(silent=false){
       });
     }
     buildStrikePills(); buildTargetSlider(); refresh();
+    if(positions.length) fetchAllPositionChains();
   }catch(e){
     if(!silent){const errEl=document.getElementById('live-err');errEl.textContent='⚠ Could not reach server.';errEl.style.display='block';}
   }finally{btn.disabled=false;btn.textContent='⟳ Refresh';}
 }
 
+async function fetchChainForExpiry(expiry){
+  if(!expiry) return;
+  try{
+    const chain=await fetch(`/api/chain?symbol=NIFTY&expiry=${expiry}`).then(r=>r.json());
+    if(chain.error||!chain.strikes?.length) return;
+    liveStrikesByExpiry[expiry]={};
+    liveIVByExpiry[expiry]={};
+    chain.strikes.forEach(s=>{
+      liveStrikesByExpiry[expiry][s.strike]={
+        call_bid:s.call_bid, call_ask:s.call_ask, call_ltp:s.call_ltp,
+        put_bid:s.put_bid,   put_ask:s.put_ask,   put_ltp:s.put_ltp,
+      };
+      if(s.call_iv>0) liveIVByExpiry[expiry][s.strike+'_call']=s.call_iv/100;
+      if(s.put_iv>0)  liveIVByExpiry[expiry][s.strike+'_put'] =s.put_iv/100;
+    });
+  }catch(e){ console.log('Chain fetch failed for expiry',expiry,e); }
+}
+
+async function fetchAllPositionChains(){
+  const expiries=[...new Set(positions.map(p=>p.expiry))];
+  // Don't re-fetch the global expiry — already fetched by fetchLive()
+  const others=expiries.filter(e=>e!==st.expiry);
+  await Promise.all(others.map(e=>fetchChainForExpiry(e)));
+  buildPositionsTab();
+}
+  
 function flashSet(id,val,key){
   const el=document.getElementById(id);if(!el)return;
   el.value=val;st[key]=typeof val==='string'?val:parseFloat(val);
@@ -1099,16 +1131,23 @@ function removePosition(id){
 
 function posCurrentValue(pos){
   const{strike,type,side,expiry,entryPrice,lots}=pos;
-  const sig=liveIV[strike]||(st.iv||15)/100;
+  const ivKey=strike+'_'+type;
+  const sig=liveIVByExpiry[expiry]?.[ivKey]||liveIV[strike]||(st.iv||15)/100;
   const r=(st.rate||6.5)/100;
   const expiryEnd=new Date(expiry+'T15:30:00+05:30');
   const T=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
-  const isLiveExpiry=expiry===st.expiry;
-  const live=isLiveExpiry?liveStrikes[strike]:null;
+  // Check global expiry liveStrikes first, then per-expiry store
+  const globalLive=expiry===st.expiry?liveStrikes[strike]:null;
+  const expiryLive=liveStrikesByExpiry[expiry]?.[strike];
+  const liveData=globalLive||expiryLive;
   let cur,source;
-  if(live&&side==='buy'&&live.bid>0){cur=live.bid;source='BID';}
-  else if(live&&side==='sell'&&live.ask>0){cur=live.ask;source='ASK';}
-  else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
+  if(liveData){
+    const bid=type==='put'?liveData.put_bid??liveData.bid:liveData.call_bid??liveData.bid;
+    const ask=type==='put'?liveData.put_ask??liveData.ask:liveData.call_ask??liveData.ask;
+    if(side==='buy'&&bid>0){cur=bid;source='BID';}
+    else if(side==='sell'&&ask>0){cur=ask;source='ASK';}
+    else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
+  }else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
   const pnlUnit=side==='buy'?cur-entryPrice:entryPrice-cur;
   const pnl=r2(pnlUnit*lots*75);
   const pnlPct=entryPrice>0?r2(pnlUnit/entryPrice*100):0;
