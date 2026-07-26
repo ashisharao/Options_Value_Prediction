@@ -319,6 +319,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
         <th>Current (₹)</th>
         <th>P&L (₹)</th>
         <th>P&L %</th>
+        <th>Expires In</th>
         <th>Source</th>
         <th></th>
       </tr>
@@ -1115,6 +1116,18 @@ function posCurrentValue(pos){
   return{cur:r2(cur),source,pnl,pnlPct,capital};
 }
 
+function countdownStr(expiry){
+  const exp=new Date(expiry+'T15:30:00+05:30');
+  const diff=exp-new Date();
+  if(diff<=0) return{str:'Expired',urgent:true};
+  const days=Math.floor(diff/(86400000));
+  const hrs=Math.floor((diff%86400000)/3600000);
+  const mins=Math.floor((diff%3600000)/60000);
+  const urgent=days<2;
+  const str=days>0?`${days}d ${hrs}h`:`${hrs}h ${mins}m`;
+  return{str,urgent};
+}
+  
 function buildPositionsTab(){
   buildPosExpiryDropdown();
   const tbody=document.getElementById('pos-body');
@@ -1139,6 +1152,7 @@ function buildPositionsTab(){
       <td>₹${cur.toFixed(2)}</td>
       <td class="${cl}">${pnl>0?'+':''}₹${Math.abs(pnl).toLocaleString('en-IN')}</td>
       <td class="${cl}">${pnlPct>0?'+':''}${pnlPct.toFixed(1)}%</td>
+      <td style="color:${countdownStr(pos.expiry).urgent?'var(--red)':'var(--text3)'}; font-weight:${countdownStr(pos.expiry).urgent?700:400}">${countdownStr(pos.expiry).str}</td>
       <td><span class="src-badge ${srcCls}">${source}</span></td>
       <td><button class="del-btn" onclick="removePosition(${pos.id})">×</button></td>`;
     tbody.appendChild(tr);
@@ -1164,6 +1178,9 @@ buildDateRangeSlider()
 refresh();
 fetchLive(true);
 setAutoRefresh();
+setInterval(()=>{
+  if(currentTab==='positions') buildPositionsTab();
+},60000);
 loadPositions();
 buildPosExpiryDropdown();
 </script>
