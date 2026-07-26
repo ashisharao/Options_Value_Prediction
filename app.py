@@ -78,8 +78,13 @@ async def get_market():
     return result
 
 @_app.get("/api/chain")
-async def get_chain(symbol: str = "NIFTY"):
-    key = f"chain_{symbol.upper()}"
+async def get_chain(symbol: str = "NIFTY", expiry: str = ""):
+    from datetime import datetime
+    exp_str = ""
+    if expiry:
+        try: exp_str = datetime.strptime(expiry, "%Y-%m-%d").strftime("%d-%b-%Y").upper()
+        except ValueError: pass
+    key = f"chain_{symbol.upper()}_{exp_str or 'nearest'}"
     cached = _get(key, 60)
     if cached: return cached
     result = {"symbol": symbol.upper(), "spot": None, "atm_strike": None,
@@ -95,10 +100,13 @@ async def get_chain(symbol: str = "NIFTY"):
         }
         s = requests.Session()
         s.get("https://www.nseindia.com/", headers=hdrs, timeout=10)
-        r = s.get(
-            f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol.upper()}",
-            headers=hdrs, timeout=10
-        )
+        url = f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol.upper()}"
+        if expiry:
+            try:
+                url += f"&expiryDate={exp_str}"
+            except ValueError:
+                pass
+        r = s.get(url, headers=hdrs, timeout=10)
         data = r.json()
         records = data["records"]
         spot = float(records["underlyingValue"])
@@ -115,7 +123,10 @@ async def get_chain(symbol: str = "NIFTY"):
         
         strikes = []
         for row in records["data"]:
-            if row.get("expiryDate") != result["expiry"]:
+            row_expiry = row.get("expiryDate","")
+            if expiry and exp_str and row_expiry != exp_str:
+                continue
+            elif not expiry and row_expiry != result["expiry"]:
                 continue
             s_price = int(row["strikePrice"])
             ce = row.get("CE", {})
