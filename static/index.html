@@ -725,7 +725,6 @@ function buildDecayCharts(){
   const bkDatasets=strikes.map(K=>{
     const T_now=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
     const V0=r2(bs(spot,K,T_now,r,sig,type));
-    console.log('K:', K, 'V0:', V0, 'spot:', spot, 'T_now:', T_now, 'test invert:', invertBS(V0,K,T_now,r,sig,type,spot));
     let prevS=spot;
     const vals=dates.map(d=>{
       const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
@@ -846,7 +845,8 @@ async function fetchLive(silent=false){
     const spot=chain.spot||mkt.spot;
     if(spot) flashSet('i-spot',spot,'spot');
     if(chain.atm_iv){document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%';flashSet('i-iv',chain.atm_iv,'iv');}
-    if(chain.atm_strike) flashSet('i-strike',chain.atm_strike,'strike');
+    const atmFromSpot=Math.round((chain.spot||mkt.spot)/( st.step||100))*(st.step||100);
+    flashSet('i-strike', chain.atm_strike||atmFromSpot, 'strike');
     if(chain.expiry){
       const p=new Date(chain.expiry.replace(/-/g,' '));
       if(!isNaN(p)){
