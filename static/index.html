@@ -723,8 +723,9 @@ function buildDecayCharts(){
 
   // Breakeven spot path
   const bkDatasets=strikes.map(K=>{
-    const V0=r2(bs(spot,K,T_full,r,sig,type));
-    console.log('K:', K, 'V0:', V0, 'spot:', spot, 'T_full:', T_full, 'test invert:', invertBS(V0,K,T_full,r,sig,type,spot));
+    const T_now=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
+    const V0=r2(bs(spot,K,T_now,r,sig,type));
+    console.log('K:', K, 'V0:', V0, 'spot:', spot, 'T_now:', T_now, 'test invert:', invertBS(V0,K,T_now,r,sig,type,spot));
     let prevS=spot;
     const vals=dates.map(d=>{
       const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
