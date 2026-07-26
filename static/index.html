@@ -115,6 +115,25 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 .rv-tag{font-size:9px;padding:1px 6px;border-radius:3px;font-family:sans-serif;display:inline-block;margin-top:2px}
 .tag-agg{background:rgba(16,185,129,0.15);color:var(--green)}
 .tag-con{background:rgba(96,165,250,0.15);color:var(--blue)}
+.pos-form{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr 1fr 1.5fr 1fr 1fr auto;gap:8px;align-items:end}
+.pos-form .ctrl{margin:0}
+.pnl-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.pnl-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.pnl-card .plbl{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.pnl-card .pval{font-family:monospace;font-size:18px;font-weight:700}
+.pos-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+.pos-table th{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid var(--border);background:var(--bg2);text-align:right;white-space:nowrap}
+.pos-table th:first-child,.pos-table td:first-child{text-align:left}
+.pos-table td{padding:7px 8px;border-bottom:1px solid rgba(55,65,81,0.5);text-align:right;font-family:monospace;color:var(--text2)}
+.pos-table tr:hover td{background:rgba(255,255,255,0.02)}
+.del-btn{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:var(--red);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-family:inherit}
+.del-btn:hover{background:rgba(239,68,68,0.25)}
+.add-btn{padding:7px 14px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:var(--green);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;white-space:nowrap}
+.add-btn:hover{background:rgba(16,185,129,0.25)}
+.src-badge{font-size:8px;padding:1px 4px;border-radius:3px;font-family:sans-serif}
+.src-bid{background:rgba(16,185,129,0.15);color:var(--green)}
+.src-ask{background:rgba(96,165,250,0.15);color:var(--blue)}
+.src-bs{background:rgba(156,163,175,0.15);color:var(--text4)}
 </style>
 </head>
 <body>
@@ -173,6 +192,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 <div class="tab-bar">
   <button class="tab-btn on" onclick="switchTab('selector')">Strike Selector</button>
   <button class="tab-btn" onclick="switchTab('decay')">Time Value Decay</button>
+  <button class="tab-btn" onclick="switchTab('positions')">P&L Tracker</button>
 </div>
 
 <!-- Tab 1: Strike Selector -->
@@ -251,6 +271,62 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
   <div class="chart-wrap" style="height:280px">
     <div class="chart-title">Breakeven spot path · spot needed at each moment to maintain today's option value · all curves start at current spot</div>
     <canvas id="breakeven-chart" style="max-height:250px"></canvas>
+  </div>
+</div>
+
+<!-- Tab 3: Current P&L Tracker -->
+<div id="tab-positions" class="tab-content">
+  <!-- Add position form -->
+  <div class="section-label">Add Position</div>
+  <div class="pos-form">
+    <div class="ctrl"><label>Strike (₹)</label><input id="pos-strike" type="number" step="100" placeholder="e.g. 24000"></div>
+    <div class="ctrl"><label>Type</label>
+      <div class="tg" style="margin-top:3px">
+        <button id="pos-call-btn" onclick="setPosType('call')">▲ Call</button>
+        <button id="pos-put-btn" class="on" onclick="setPosType('put')">▼ Put</button>
+      </div>
+    </div>
+    <div class="ctrl"><label>Side</label>
+      <div class="tg" style="margin-top:3px">
+        <button id="pos-buy-btn" class="on" onclick="setPosSide('buy')">Buy</button>
+        <button id="pos-sell-btn" onclick="setPosSide('sell')">Sell</button>
+      </div>
+    </div>
+    <div class="ctrl"><label>Expiry</label><select id="pos-expiry"></select></div>
+    <div class="ctrl"><label>Entry Price (₹)</label><input id="pos-entry" type="number" step="0.5" placeholder="Premium paid"></div>
+    <div class="ctrl"><label>Lots</label><input id="pos-lots" type="number" value="1" min="1"></div>
+    <button class="add-btn" onclick="addPosition()">+ Add</button>
+  </div>
+
+  <!-- Summary -->
+  <div class="pnl-summary" id="pnl-summary">
+    <div class="pnl-card"><div class="plbl">Total P&L</div><div class="pval" id="sum-pnl">—</div></div>
+    <div class="pnl-card"><div class="plbl">Capital Deployed</div><div class="pval" id="sum-capital">—</div></div>
+    <div class="pnl-card"><div class="plbl">Overall ROM %</div><div class="pval" id="sum-rom">—</div></div>
+    <div class="pnl-card"><div class="plbl">Positions</div><div class="pval" id="sum-count">—</div></div>
+  </div>
+
+  <!-- Positions table -->
+  <table class="pos-table">
+    <thead>
+      <tr>
+        <th>Strike</th>
+        <th>Type</th>
+        <th>Side</th>
+        <th>Expiry</th>
+        <th>Entry (₹)</th>
+        <th>Lots</th>
+        <th>Current (₹)</th>
+        <th>P&L (₹)</th>
+        <th>P&L %</th>
+        <th>Source</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="pos-body"></tbody>
+  </table>
+  <div style="font-size:10px;color:var(--text4);text-align:center">
+    BID = live bid price (long positions) · ASK = live ask price (short positions) · BS = Black-Scholes theoretical · Lot size: 75
   </div>
 </div>
 
@@ -540,10 +616,11 @@ function strikeColor(K){
 // ── Tab switching ──────────────────────────────────────────────────────
 function switchTab(t){
   currentTab=t;
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',i===(t==='selector'?0:1)));
-  document.getElementById('tab-selector').classList.toggle('on',t==='selector');
-  document.getElementById('tab-decay').classList.toggle('on',t==='decay');
+  const tabs=['selector','decay','positions'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',i===tabs.indexOf(t)));
+  tabs.forEach(id=>document.getElementById('tab-'+id).classList.toggle('on',id===t));
   if(t==='decay') buildDecayCharts();
+  if(t==='positions') buildPositionsTab();
 }
 
 // ── Compute selector ──────────────────────────────────────────────────
@@ -960,6 +1037,125 @@ function is_market_open(){
   return day>=1&&day<=5&&m>=555&&m<=930;
 }
 
+// ── Positions state ───────────────────────────────────────────────────
+let positions=[];
+let posType='put', posSide='buy';
+
+function setPosType(t){
+  posType=t;
+  document.getElementById('pos-call-btn').classList.toggle('on',t==='call');
+  document.getElementById('pos-put-btn').classList.toggle('on',t==='put');
+}
+function setPosSide(s){
+  posSide=s;
+  document.getElementById('pos-buy-btn').classList.toggle('on',s==='buy');
+  document.getElementById('pos-sell-btn').classList.toggle('on',s==='sell');
+}
+
+function buildPosExpiryDropdown(){
+  const sel=document.getElementById('pos-expiry');
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='';
+  const main=document.getElementById('i-expiry');
+  if(main) Array.from(main.options).forEach(o=>{
+    const opt=document.createElement('option');
+    opt.value=o.value; opt.textContent=o.textContent;
+    sel.appendChild(opt);
+  });
+  if(cur) sel.value=cur;
+}
+
+function savePositions(){
+  try{localStorage.setItem('nifty_positions',JSON.stringify(positions));}catch(e){}
+}
+function loadPositions(){
+  try{const d=localStorage.getItem('nifty_positions');if(d)positions=JSON.parse(d);}
+  catch(e){positions=[];}
+}
+
+function addPosition(){
+  const strike=parseFloat(document.getElementById('pos-strike').value);
+  const entry=parseFloat(document.getElementById('pos-entry').value);
+  const lots=parseInt(document.getElementById('pos-lots').value)||1;
+  const expiry=document.getElementById('pos-expiry').value;
+  if(!strike||!entry||!expiry){alert('Please fill in all fields.');return;}
+  positions.push({
+    id:Date.now(), strike, type:posType, side:posSide,
+    expiry, entryPrice:entry, lots
+  });
+  savePositions();
+  buildPositionsTab();
+  document.getElementById('pos-strike').value='';
+  document.getElementById('pos-entry').value='';
+}
+
+function removePosition(id){
+  positions=positions.filter(p=>p.id!==id);
+  savePositions();
+  buildPositionsTab();
+}
+
+function posCurrentValue(pos){
+  const{strike,type,side,expiry,entryPrice,lots}=pos;
+  const sig=liveIV[strike]||(st.iv||15)/100;
+  const r=(st.rate||6.5)/100;
+  const expiryEnd=new Date(expiry+'T15:30:00+05:30');
+  const T=Math.max((expiryEnd-new Date())/(365*24*3600*1000),0);
+  const isLiveExpiry=expiry===st.expiry;
+  const live=isLiveExpiry?liveStrikes[strike]:null;
+  let cur,source;
+  if(live&&side==='buy'&&live.bid>0){cur=live.bid;source='BID';}
+  else if(live&&side==='sell'&&live.ask>0){cur=live.ask;source='ASK';}
+  else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
+  const pnlUnit=side==='buy'?cur-entryPrice:entryPrice-cur;
+  const pnl=r2(pnlUnit*lots*75);
+  const pnlPct=entryPrice>0?r2(pnlUnit/entryPrice*100):0;
+  const capital=r2(entryPrice*lots*75);
+  return{cur:r2(cur),source,pnl,pnlPct,capital};
+}
+
+function buildPositionsTab(){
+  buildPosExpiryDropdown();
+  const tbody=document.getElementById('pos-body');
+  if(!tbody) return;
+  tbody.innerHTML='';
+  let totalPnl=0,totalCapital=0;
+
+  positions.forEach(pos=>{
+    const{cur,source,pnl,pnlPct,capital}=posCurrentValue(pos);
+    totalPnl+=pnl; totalCapital+=capital;
+    const cl=pnl>0?'up':pnl<0?'dn':'neu';
+    const srcCls=source==='BID'?'src-bid':source==='ASK'?'src-ask':'src-bs';
+    const expiryLabel=pos.expiry; // ISO date
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><b>₹${pos.strike.toLocaleString('en-IN')}</b></td>
+      <td>${pos.type==='put'?'▼ Put':'▲ Call'}</td>
+      <td>${pos.side==='buy'?'<span class="up">Buy</span>':'<span class="dn">Sell</span>'}</td>
+      <td style="font-size:11px">${expiryLabel}</td>
+      <td>₹${pos.entryPrice.toFixed(2)}</td>
+      <td>${pos.lots}</td>
+      <td>₹${cur.toFixed(2)}</td>
+      <td class="${cl}">${pnl>0?'+':''}₹${Math.abs(pnl).toLocaleString('en-IN')}</td>
+      <td class="${cl}">${pnlPct>0?'+':''}${pnlPct.toFixed(1)}%</td>
+      <td><span class="src-badge ${srcCls}">${source}</span></td>
+      <td><button class="del-btn" onclick="removePosition(${pos.id})">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Summary
+  const rom=totalCapital>0?r2(totalPnl/totalCapital*100):0;
+  const pnlEl=document.getElementById('sum-pnl');
+  pnlEl.textContent=(totalPnl>0?'+':'')+'₹'+Math.abs(Math.round(totalPnl)).toLocaleString('en-IN');
+  pnlEl.className='pval '+(totalPnl>0?'up':totalPnl<0?'dn':'neu');
+  document.getElementById('sum-capital').textContent='₹'+Math.round(totalCapital).toLocaleString('en-IN');
+  const romEl=document.getElementById('sum-rom');
+  romEl.textContent=(rom>0?'+':'')+rom.toFixed(1)+'%';
+  romEl.className='pval '+(rom>0?'up':rom<0?'dn':'neu');
+  document.getElementById('sum-count').textContent=positions.length;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────
 buildExpiryDropdown();
 buildStrikePills();
@@ -968,6 +1164,8 @@ buildDateRangeSlider()
 refresh();
 fetchLive(true);
 setAutoRefresh();
+loadPositions();
+buildPosExpiryDropdown();
 </script>
 </body>
 </html>
