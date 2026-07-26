@@ -238,6 +238,10 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
     <div class="chart-title">Option value vs time · spot held at ₹<span id="spot-label2">24300</span> · converges to intrinsic at expiry</div>
     <canvas id="decay-chart" style="max-height:250px"></canvas>
   </div>
+  <div class="chart-wrap" style="height:280px">
+    <div class="chart-title">Breakeven spot path · spot needed at each moment to maintain today's option value · all curves start at current spot</div>
+    <canvas id="breakeven-chart" style="max-height:250px"></canvas>
+  </div>
 </div>
 
 <div class="foot">
@@ -263,6 +267,26 @@ function probProfit(S,K,T,r,sig,type){
   if(T<=0) return type==='put'?(S<K?100:0):(S>K?100:0);
   const sq=sig*Math.sqrt(T),d2=(Math.log(S/K)+(r-.5*sig*sig)*T)/sq;
   return r2(type==='put'?ncdf(-d2)*100:ncdf(d2)*100);
+}
+function invertBS(V0,K,T,r,sig,type,guess){
+  if(V0<=0) return K;
+  if(T<=0){ const s=type==='put'?K-V0:K+V0; return s>0?r2(s):null; }
+  if(type==='put'&&V0>=K*Math.exp(-r*T)*0.9999) return null;
+  let S=guess||K;
+  for(let i=0;i<50;i++){
+    const price=bs(S,K,T,r,sig,type);
+    const diff=price-V0;
+    if(Math.abs(diff)<0.001) return r2(S);
+    const sq=sig*Math.sqrt(T);
+    const d1=(Math.log(S/K)+(r+.5*sig*sig)*T)/sq;
+    const delta=type==='call'?ncdf(d1):ncdf(d1)-1;
+    if(Math.abs(delta)<1e-10) break;
+    let Sn=S-diff/delta;
+    Sn=Math.max(Sn,1); Sn=Math.min(Sn,K*5);
+    if(Math.abs(Sn-S)<0.001) return r2(Sn);
+    S=Sn;
+  }
+  return r2(S);
 }
 function r2(v){return Math.round(v*100)/100}
 
@@ -292,7 +316,7 @@ let st={spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
 let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
-let selectorChart=null, decayChart=null, decayBarChart=null;
+let selectorChart=null, decayChart=null, decayBarChart=null, breakevenChart=null;
 let currentTab='selector';
 
 // ── Time slot helpers ──────────────────────────────────────────────────
@@ -693,6 +717,60 @@ function buildDecayCharts(){
         x:{ticks:{color:'#9CA3AF',maxTicksLimit:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(55,65,81,0.3)'},border:{color:'#374151'}},
         y:{ticks:{color:'#D1D5DB',callback:v=>st.decayMode==='norm'?v:'₹'+v,font:{size:10}},grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
            title:{display:true,text:'Time value lost (₹)',color:'#9CA3AF',font:{size:10}}}
+      }
+    }
+  });
+
+  // Breakeven spot path
+  const bkDatasets=strikes.map(K=>{
+    const V0=r2(bs(spot,K,T_full,r,sig,type));
+    let prevS=spot;
+    const vals=dates.map(d=>{
+      const T=Math.max((expiryEnd-d)/(365*24*3600*1000),0);
+      const s=invertBS(V0,K,T,r,sig,type,prevS);
+      if(s!==null) prevS=s;
+      return s;
+    });
+    return{
+      label:'₹'+K.toLocaleString('en-IN'),
+      data:vals,
+      borderColor:strikeColor(K),
+      borderWidth:K===atm?3:1.5,
+      pointRadius:0,pointHoverRadius:4,
+      tension:0.3,fill:false,spanGaps:false,
+    };
+  });
+
+  if(breakevenChart) breakevenChart.destroy();
+  const ctx3=document.getElementById('breakeven-chart').getContext('2d');
+  breakevenChart=new Chart(ctx3,{
+    type:'line',
+    data:{labels,datasets:bkDatasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        annotation:{annotations:{
+          spotLine:{type:'line',yMin:spot,yMax:spot,
+            borderColor:'rgba(255,255,255,0.25)',borderWidth:1,borderDash:[4,4],
+            label:{display:true,content:'Current spot ₹'+Number(spot).toLocaleString('en-IN'),
+              position:'start',color:'rgba(255,255,255,0.4)',font:{size:9},
+              backgroundColor:'transparent'}}
+        }},
+        legend:{labels:{color:'#F3F4F6',font:{size:11},usePointStyle:true,pointStyleWidth:10,boxHeight:6}},
+        tooltip:{backgroundColor:'#1F2937',borderColor:'#374151',borderWidth:1,
+          titleColor:'#9CA3AF',bodyColor:'#F9FAFB',
+          callbacks:{
+            title:items=>labels[items[0].dataIndex],
+            label:ctx=>' '+ctx.dataset.label+': ₹'+(ctx.parsed.y||0).toLocaleString('en-IN')
+          }}
+      },
+      scales:{
+        x:{ticks:{color:'#D1D5DB',maxTicksLimit:12,maxRotation:0,font:{size:10}},
+           grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'}},
+        y:{ticks:{color:'#D1D5DB',callback:v=>'₹'+Number(v).toLocaleString('en-IN'),font:{size:10}},
+           grid:{color:'rgba(55,65,81,0.5)'},border:{color:'#374151'},
+           title:{display:true,text:'Spot price needed (₹)',color:'#9CA3AF',font:{size:10}}}
       }
     }
   });
