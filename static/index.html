@@ -132,6 +132,16 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
   <div class="spacer"></div>
   <span class="live-err" id="live-err" style="display:none"></span>
   <span class="live-ts" id="live-ts"></span>
+  <div class="pill">
+    <span class="lbl">Auto-refresh</span>
+    <select id="auto-interval" onchange="setAutoRefresh()" style="background:transparent;border:none;outline:none;color:var(--text2);font-family:monospace;font-size:12px;font-weight:700;cursor:pointer">
+      <option value="0">Off</option>
+      <option value="5">5 min</option>
+      <option value="15" selected>15 min</option>
+      <option value="30">30 min</option>
+      <option value="60">60 min</option>
+    </select>
+  </div>
   <button class="btn btn-live" id="btn-live" onclick="fetchLive(false)">⟳ Refresh</button>
 </div>
 
@@ -933,6 +943,23 @@ function flashSet(id,val,key){
   el.classList.add('updated');setTimeout(()=>el.classList.remove('updated'),2000);
 }
 
+let _refreshTimer=null;
+function setAutoRefresh(){
+  if(_refreshTimer){clearInterval(_refreshTimer);_refreshTimer=null;}
+  const mins=parseInt(document.getElementById('auto-interval').value);
+  if(mins>0){
+    _refreshTimer=setInterval(()=>{
+      if(is_market_open()) fetchLive(true);
+    }, mins*60*1000);
+  }
+}
+function is_market_open(){
+  const now=new Date();
+  const ist=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+  const day=ist.getDay(),m=ist.getHours()*60+ist.getMinutes();
+  return day>=1&&day<=5&&m>=555&&m<=930;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────
 buildExpiryDropdown();
 buildStrikePills();
@@ -940,6 +967,7 @@ buildTargetSlider();
 buildDateRangeSlider()
 refresh();
 fetchLive(true);
+setAutoRefresh();
 </script>
 </body>
 </html>
