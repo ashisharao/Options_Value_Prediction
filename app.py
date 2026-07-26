@@ -65,10 +65,13 @@ async def get_market():
               "source": None, "timestamp": ist_now().isoformat(), "error": None}
     try:
         import yfinance as yf
-        spot = yf.Ticker("^NSEI").history(period="1d")["Close"].iloc[-1]
-        vix  = yf.Ticker("^INDIAVIX").history(period="1d")["Close"].iloc[-1]
-        if spot: result["spot"] = round(float(spot), 2)
-        if vix:  result["vix"]  = round(float(vix),  2)
+        nifty_hist    = yf.Ticker("^NSEI").history(period="1d")["Close"]
+        bnifty_hist   = yf.Ticker("^NSEBANK").history(period="1d")["Close"]
+        vix_hist      = yf.Ticker("^INDIAVIX").history(period="1d")["Close"]
+        if len(nifty_hist):  result["nifty_spot"]    = round(float(nifty_hist.iloc[-1]), 2)
+        if len(bnifty_hist): result["banknifty_spot"]= round(float(bnifty_hist.iloc[-1]), 2)
+        if len(vix_hist):    result["vix"]            = round(float(vix_hist.iloc[-1]), 2)
+        result["spot"]   = result.get("nifty_spot")
         result["source"] = "yfinance"
         logger.info(f"Market: spot={result['spot']} vix={result['vix']}")
     except Exception as exc:
