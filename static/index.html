@@ -176,6 +176,13 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
 
 <div class="row">
   <div class="twrap">
+    <label>Instrument</label>
+    <div class="tg">
+      <button id="btn-nifty" class="on" onclick="setSymbol('NIFTY')">Nifty</button>
+      <button id="btn-banknifty" onclick="setSymbol('BANKNIFTY')">Bank Nifty</button>
+    </div>
+  </div>
+  <div class="twrap">
     <label>Option Type</label>
     <div class="tg">
       <button id="btn-call" onclick="setType('call')">▲ Call</button>
@@ -327,7 +334,7 @@ h1{font-size:16px;font-weight:700;margin-bottom:2px}
     <tbody id="pos-body"></tbody>
   </table>
   <div style="font-size:10px;color:var(--text4);text-align:center">
-    BID = live bid price (long positions) · ASK = live ask price (short positions) · BS = Black-Scholes theoretical · Lot size: 75
+    BID = live bid price (long positions) · ASK = live ask price (short positions) · BS = Black-Scholes theoretical · Lot size: <span id="lot-size-label">75</span>
   </div>
 </div>
 
@@ -385,7 +392,8 @@ function buildExpiryDropdown(){
   const DOW2=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const today=new Date(); today.setHours(0,0,0,0);
   let d=new Date(today);
-  while(d.getDay()!==2) d.setDate(d.getDate()+1);
+  const expDay=symCfg().expiryDay;
+  while(d.getDay()!==expDay) d.setDate(d.getDate()+1);
   for(let i=0;i<12;i++){
     const opt=document.createElement('option');
     const yy=d.getFullYear(),mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
@@ -399,7 +407,7 @@ function buildExpiryDropdown(){
 }
 
 // ── State ──────────────────────────────────────────────────────────────
-let st={spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
+let st={symbol:'NIFTY',spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
 let liveStrikes={};  // strike → {bid, ask} from NSE
 let liveIV={};  // strike → IV as decimal e.g. 0.142
@@ -407,6 +415,11 @@ let liveStrikesByExpiry={};  // expiry → {strike → {bid,ask,ltp}}
 let liveIVByExpiry={};       // expiry → {strike → IV decimal}
 let activeStrikes=new Set();
 const PALETTE=['#60A5FA','#34D399','#F59E0B','#F87171','#A78BFA','#38BDF8','#E879F9'];
+const SYMBOL_CONFIG={
+  NIFTY:    {lotSize:75, step:100, expiryDay:2, ticker:'^NSEI',    label:'Nifty 50'},
+  BANKNIFTY:{lotSize:15, step:100, expiryDay:3, ticker:'^NSEBANK', label:'Bank Nifty'}
+};
+function symCfg(){return SYMBOL_CONFIG[st.symbol||'NIFTY'];}
 let selectorChart=null, decayChart=null, decayBarChart=null, breakevenChart=null;
 let currentTab='selector';
 
@@ -575,6 +588,19 @@ function setType(t){
   document.getElementById('btn-call').classList.toggle('on',t==='call');
   document.getElementById('btn-put').classList.toggle('on',t==='put');
   buildTargetSlider(); refresh();
+}
+function setSymbol(sym){
+  st.symbol=sym;
+  document.getElementById('btn-nifty').classList.toggle('on',sym==='NIFTY');
+  document.getElementById('btn-banknifty').classList.toggle('on',sym==='BANKNIFTY');
+  document.getElementById('lot-size-label').textContent=symCfg().lotSize;
+  st.step=symCfg().step;
+  document.getElementById('i-step').value=st.step;
+  liveStrikes={}; liveIV={}; liveStrikesByExpiry={}; liveIVByExpiry={};
+  buildExpiryDropdown();
+  buildStrikePills();
+  autoFillTargets();
+  fetchLive(true);
 }
 function strikeIV(K){
   return liveIV[K]||(st.iv||15)/100;
@@ -970,7 +996,7 @@ async function fetchLive(silent=false){
   try{
     const[mkt,chain]=await Promise.all([
       fetch('/api/market').then(r=>r.json()),
-      fetch('/api/chain?symbol=NIFTY').then(r=>r.json())
+      fetch(`/api/chain?symbol=${st.symbol}`).then(r=>r.json())
     ]);
     const dot=document.getElementById('dot');
     dot.className='dot '+(mkt.market_open?'open':'closed');
@@ -979,7 +1005,7 @@ async function fetchLive(silent=false){
     vs.style.color=mkt.market_open?'var(--green)':'var(--red)';
     if(mkt.spot) document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN');
     if(mkt.vix)  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1);
-    const spot=chain.spot||mkt.spot;
+    const spot=chain.spot||(st.symbol==='BANKNIFTY'?mkt.banknifty_spot:mkt.nifty_spot)||mkt.spot;
     if(spot) flashSet('i-spot',spot,'spot');
     if(chain.atm_iv){document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%';flashSet('i-iv',chain.atm_iv,'iv');}
     const atmFromSpot=Math.round((chain.spot||mkt.spot)/( st.step||100))*(st.step||100);
@@ -1021,10 +1047,10 @@ async function fetchLive(silent=false){
   }finally{btn.disabled=false;btn.textContent='⟳ Refresh';}
 }
 
-async function fetchChainForExpiry(expiry){
+async function fetchChainForExpiry(expiry, symbol='NIFTY'){
   if(!expiry) return;
   try{
-    const chain=await fetch(`/api/chain?symbol=NIFTY&expiry=${expiry}`).then(r=>r.json());
+    const chain=await fetch(`/api/chain?symbol=${symbol}&expiry=${expiry}`).then(r=>r.json());
     if(chain.error||!chain.strikes?.length) return;
     liveStrikesByExpiry[expiry]={};
     liveIVByExpiry[expiry]={};
@@ -1043,7 +1069,7 @@ async function fetchAllPositionChains(){
   const expiries=[...new Set(positions.map(p=>p.expiry))];
   // Don't re-fetch the global expiry — already fetched by fetchLive()
   const others=expiries.filter(e=>e!==st.expiry);
-  await Promise.all(others.map(e=>fetchChainForExpiry(e)));
+  await Promise.all(others.map(e=>fetchChainForExpiry(e,st.symbol)));
   buildPositionsTab();
 }
   
@@ -1149,9 +1175,10 @@ function posCurrentValue(pos){
     else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
   }else{cur=r2(bs(st.spot,strike,T,r,sig,type));source='BS';}
   const pnlUnit=side==='buy'?cur-entryPrice:entryPrice-cur;
-  const pnl=r2(pnlUnit*lots*75);
+  const lotSize=symCfg().lotSize;
+  const pnl=r2(pnlUnit*lots*lotSize);
+  const capital=r2(entryPrice*lots*lotSize);
   const pnlPct=entryPrice>0?r2(pnlUnit/entryPrice*100):0;
-  const capital=r2(entryPrice*lots*75);
   return{cur:r2(cur),source,pnl,pnlPct,capital};
 }
 
