@@ -108,6 +108,11 @@ async def get_chain(symbol: str = "NIFTY"):
         atm = round(spot / 50) * 50
         result["atm_strike"] = atm
 
+        call_bid_col = find_col(df, ["CE.bidprice", "CE.bidPrice", "CE.bid"])
+        call_ask_col = find_col(df, ["CE.askPrice", "CE.askprice", "CE.ask"])
+        put_bid_col  = find_col(df, ["PE.bidprice", "PE.bidPrice", "PE.bid"])
+        put_ask_col  = find_col(df, ["PE.askPrice", "PE.askprice", "PE.ask"])
+        
         strikes = []
         for row in records["data"]:
             if row.get("expiryDate") != result["expiry"]:
@@ -116,14 +121,18 @@ async def get_chain(symbol: str = "NIFTY"):
             ce = row.get("CE", {})
             pe = row.get("PE", {})
             strikes.append({
-                "strike":   s_price,
-                "call_ltp": round(float(ce.get("lastPrice", 0)), 2),
-                "put_ltp":  round(float(pe.get("lastPrice", 0)), 2),
-                "call_iv":  round(float(ce.get("impliedVolatility", 0)), 2),
-                "put_iv":   round(float(pe.get("impliedVolatility", 0)), 2),
-                "call_oi":  int(ce.get("openInterest", 0)),
-                "put_oi":   int(pe.get("openInterest", 0)),
-                "is_atm":   s_price == atm,
+                "strike":   s,
+                "call_ltp": round(safe_float(row[call_ltp]) if call_ltp else 0, 2),
+                "put_ltp":  round(safe_float(row[put_ltp])  if put_ltp  else 0, 2),
+                "call_iv":  round(safe_float(row[call_iv])  if call_iv  else 0, 2),
+                "put_iv":   round(safe_float(row[put_iv])   if put_iv   else 0, 2),
+                "call_oi":  int(safe_float(row[call_oi])    if call_oi  else 0),
+                "put_oi":   int(safe_float(row[put_oi])     if put_oi   else 0),
+                "call_bid": round(safe_float(row[call_bid_col]) if call_bid_col else 0, 2),
+                "call_ask": round(safe_float(row[call_ask_col]) if call_ask_col else 0, 2),
+                "put_bid":  round(safe_float(row[put_bid_col])  if put_bid_col  else 0, 2),
+                "put_ask":  round(safe_float(row[put_ask_col])  if put_ask_col  else 0, 2),
+                "is_atm":   s == atm,
             })
 
         result["strikes"] = sorted(strikes, key=lambda x: x["strike"])
