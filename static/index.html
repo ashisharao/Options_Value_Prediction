@@ -597,9 +597,8 @@ function setSymbol(sym){
   st.step=symCfg().step;
   document.getElementById('i-step').value=st.step;
   liveStrikes={}; liveIV={}; liveStrikesByExpiry={}; liveIVByExpiry={};
+  st.strike=null;
   buildExpiryDropdown();
-  buildStrikePills();
-  autoFillTargets();
   fetchLive(true);
 }
 function strikeIV(K){
@@ -1005,8 +1004,6 @@ async function fetchLive(silent=false){
     vs.style.color=mkt.market_open?'var(--green)':'var(--red)';
     if(mkt.spot) document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN');
     if(mkt.vix)  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1);
-    const spot=chain.spot||(st.symbol==='BANKNIFTY'?mkt.banknifty_spot:mkt.nifty_spot)||mkt.spot;
-    if(spot) flashSet('i-spot',spot,'spot');
     const spot=chain.spot||(st.symbol==='BANKNIFTY'?mkt.banknifty_spot:mkt.nifty_spot)||mkt.spot;
     if(spot){
       flashSet('i-spot',spot,'spot');
