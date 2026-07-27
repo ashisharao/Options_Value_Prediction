@@ -214,34 +214,27 @@
   Black-Scholes · spot held constant · time value = option price − intrinsic value · converges to zero at expiry
 </div>
 
+<script src="js/config.js"></script>
+<script src="js/math.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/market.js"></script>
+<script src="js/tab-selector.js"></script>
+<script src="js/tab-decay.js"></script>
+<script src="js/tab-positions.js"></script>
 <script>
-
-
-
-// ── State ──────────────────────────────────────────────────────────────
-let activeStrikes=new Set();
-
-// ── Inputs ────────────────────────────────────────────────────────────
-function onInput(key,val){
-  if(key==='expiry'){st[key]=val||null;buildDateRangeSlider();}
-  else{const v=parseFloat(val);st[key]=(!isNaN(v)&&v>0)?v:null;}
-  if(['spot','strike','step'].includes(key)){buildStrikePills();buildTargetSlider();}
-  refresh();
-}
-
 // ── Init ──────────────────────────────────────────────────────────────
 buildExpiryDropdown();
 buildStrikePills();
 buildTargetSlider();
-buildDateRangeSlider()
+buildDateRangeSlider();
+loadPositions();
+buildPosExpiryDropdown();
 refresh();
 fetchLive(true);
 setAutoRefresh();
 setInterval(()=>{
   if(currentTab==='positions') buildPositionsTab();
 },60000);
-loadPositions();
-buildPosExpiryDropdown();
 </script>
 </body>
 </html>
