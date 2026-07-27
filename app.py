@@ -163,7 +163,7 @@ async def get_chain(symbol: str = "NIFTY", expiry: str = ""):
             "This is normal outside market hours (Mon–Fri 9:15am–3:30pm IST) "
             "or when NSE blocks non-Indian servers. "
             "Spot & VIX are still live. Enter IV manually to use the app."
-        )"
+        )
 
     _set(key, result)
     return result
