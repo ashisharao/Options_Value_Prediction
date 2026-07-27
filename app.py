@@ -8,11 +8,13 @@ from datetime import datetime
 import pytz
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 _app = FastAPI(title="Option PnL Surface")
+_app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Cache ──────────────────────────────────────────────────────────────
 _cache: dict = {}
