@@ -5,6 +5,8 @@ const SYMBOL_CONFIG={
 };
 function symCfg(){return SYMBOL_CONFIG[st.symbol||'NIFTY'];}
 
+// ── State ──────────────────────────────────────────────────────────────
+let activeStrikes=new Set();
 let st={symbol:'NIFTY',spot:24300,strike:null,expiry:'',iv:15,step:100,rate:6.5,
         type:'put',tp1:null,tp2:null,earlyDays:14,lateDays:21,decayMode:'abs'};
 let liveStrikes={};  // strike → {bid, ask} from NSE
