@@ -9,7 +9,6 @@ function buildDecayCharts(){
   if(!dates.length) return;
 
   // Build session boundary points from now to expiry
-  const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const fmtD=d=>{const ist=toIST(d);return `${ist.getDate()} ${MNAMES[ist.getMonth()]} · ${DOW[ist.getDay()]}`;};
   const now2=new Date();
   const bndry=[];
