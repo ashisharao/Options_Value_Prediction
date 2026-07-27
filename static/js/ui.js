@@ -265,3 +265,11 @@ function fmtDateTime(d){
   const slot=SLOTS.find(s=>s.h===d.getHours()&&s.m===d.getMinutes());
   return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+DOW[d.getDay()]+(slot?' · '+slot.lbl:'');
 }
+
+// ── Inputs ────────────────────────────────────────────────────────────
+function onInput(key,val){
+  if(key==='expiry'){st[key]=val||null;buildDateRangeSlider();}
+  else{const v=parseFloat(val);st[key]=(!isNaN(v)&&v>0)?v:null;}
+  if(['spot','strike','step'].includes(key)){buildStrikePills();buildTargetSlider();}
+  refresh();
+}
