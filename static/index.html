@@ -615,7 +615,6 @@ function entryPrice(K, sig){
 
 // ── Strike pills ──────────────────────────────────────────────────────
 function buildStrikePills(){
-  console.log('buildStrikePills: st.spot=', st.spot, 'st.strike=', st.strike, 'st.step=', st.step);
   const atm=Math.round((st.strike||st.spot)/st.step)*st.step;
   const cands=[-3,-2,-1,0,1,2,3].map(i=>atm+i*st.step);
   activeStrikes=new Set(cands);
