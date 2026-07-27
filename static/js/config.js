@@ -24,3 +24,4 @@ let _refreshTimer=null;
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const SLOTS=[{h:9,m:15,lbl:'Open'},{h:12,m:0,lbl:'Noon'},{h:15,m:30,lbl:'Close'}];
 
+const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
