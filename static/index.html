@@ -1006,13 +1006,9 @@ async function fetchLive(silent=false){
     if(mkt.spot) document.getElementById('v-spot').textContent='₹'+mkt.spot.toLocaleString('en-IN');
     if(mkt.vix)  document.getElementById('v-vix').textContent=mkt.vix.toFixed(1);
     const spot=chain.spot||(st.symbol==='BANKNIFTY'?mkt.banknifty_spot:mkt.nifty_spot)||mkt.spot;
-    if(spot){
-      flashSet('i-spot',spot,'spot');
-      st.strike=null; // reset so it follows new spot
-      buildStrikePills();
-    }
+    if(spot) flashSet('i-spot',spot,'spot');
     if(chain.atm_iv){document.getElementById('v-iv').textContent=chain.atm_iv.toFixed(1)+'%';flashSet('i-iv',chain.atm_iv,'iv');}
-    const atmFromSpot=Math.round((chain.spot||mkt.spot)/( st.step||100))*(st.step||100);
+    const atmFromSpot=Math.round(spot/(st.step||100))*(st.step||100);
     flashSet('i-strike', chain.atm_strike||atmFromSpot, 'strike');
     if(chain.expiry){
       const p=new Date(chain.expiry.replace(/-/g,' '));
