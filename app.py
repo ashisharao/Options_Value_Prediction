@@ -195,7 +195,12 @@ async def get_quote(symbol: str = ""):
         if len(hist):
             result["price"] = round(float(hist.iloc[-1]), 2)
         else:
-            result["error"] = "no data returned"
+            hist_bo = yf.Ticker(f"{symbol}.BO").history(period="1d")["Close"]
+            if len(hist_bo):
+                result["price"] = round(float(hist_bo.iloc[-1]), 2)
+                result["source"] = "BSE"
+            else:
+                result["error"] = "no data returned (NSE or BSE)"
     except Exception as exc:
         result["error"] = str(exc)
 
