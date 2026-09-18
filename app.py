@@ -170,6 +170,42 @@ async def get_chain(symbol: str = "NIFTY", expiry: str = ""):
     _set(key, result)
     return result
 
+@_app.get("/api/quote")
+async def get_quote(symbol: str = ""):
+    symbol = symbol.strip().upper()
+    if not symbol:
+        return {"symbol": None, "price": None, "error": "symbol required"}
+
+    key = f"quote_{symbol}"
+    cached = _get(key, 300)  # 5 min cache is plenty for a once-a-day sweep
+    if cached:
+        return cached
+
+    result = {"symbol": symbol, "price": None, "asOf": ist_now().isoformat(), "error": None}
+    try:
+        import requests
+        hdrs = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.nseindia.com/",
+        }
+        s = requests.Session()
+        s.get("https://www.nseindia.com/", headers=hdrs, timeout=10)
+        url = f"https://www.nseindia.com/api/quote-equity?symbol={symbol}"
+        r = s.get(url, headers=hdrs, timeout=10)
+        data = r.json()
+        price = data.get("priceInfo", {}).get("lastPrice")
+        if price is None:
+            result["error"] = "no price in response"
+        else:
+            result["price"] = round(float(price), 2)
+    except Exception as exc:
+        result["error"] = str(exc)
+
+    _set(key, result)
+    return result
+    
 # ── Entry point ────────────────────────────────────────────────────────
 app = _app   # uvicorn looks for 'app'
 
