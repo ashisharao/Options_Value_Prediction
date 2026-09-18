@@ -183,28 +183,12 @@ async def get_quote(symbol: str = ""):
 
     result = {"symbol": symbol, "price": None, "asOf": ist_now().isoformat(), "error": None}
     try:
-        import requests
-        hdrs = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "*/*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.nseindia.com/",
-        }
-        s = requests.Session()
-        s.get("https://www.nseindia.com/", headers=hdrs, timeout=10)
-        url = f"https://www.nseindia.com/api/quote-equity?symbol={symbol}"
-        r = s.get(url, headers=hdrs, timeout=10)
-        try:
-            data = r.json()
-        except Exception:
-            result["error"] = f"non-JSON response (status {r.status_code}): {r.text[:200]}"
-            _set(key, result)
-            return result
-        price = data.get("priceInfo", {}).get("lastPrice")
-        if price is None:
-            result["error"] = "no price in response"
+        import yfinance as yf
+        hist = yf.Ticker(f"{symbol}.NS").history(period="1d")["Close"]
+        if len(hist):
+            result["price"] = round(float(hist.iloc[-1]), 2)
         else:
-            result["price"] = round(float(price), 2)
+            result["error"] = "no data returned"
     except Exception as exc:
         result["error"] = str(exc)
 
