@@ -194,7 +194,12 @@ async def get_quote(symbol: str = ""):
         s.get("https://www.nseindia.com/", headers=hdrs, timeout=10)
         url = f"https://www.nseindia.com/api/quote-equity?symbol={symbol}"
         r = s.get(url, headers=hdrs, timeout=10)
-        data = r.json()
+        try:
+            data = r.json()
+        except Exception:
+            result["error"] = f"non-JSON response (status {r.status_code}): {r.text[:200]}"
+            _set(key, result)
+            return result
         price = data.get("priceInfo", {}).get("lastPrice")
         if price is None:
             result["error"] = "no price in response"
