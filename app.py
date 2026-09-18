@@ -191,16 +191,16 @@ async def get_quote(symbol: str = ""):
     result = {"symbol": symbol, "price": None, "asOf": ist_now().isoformat(), "error": None}
     try:
         import yfinance as yf
-        hist = yf.Ticker(f"{symbol}.NS").history(period="1d")["Close"]
-        if len(hist):
-            result["price"] = round(float(hist.iloc[-1]), 2)
-        else:
-            hist_bo = yf.Ticker(f"{symbol}.BO").history(period="1d")["Close"]
-            if len(hist_bo):
-                result["price"] = round(float(hist_bo.iloc[-1]), 2)
-                result["source"] = "BSE"
-            else:
-                result["error"] = "no data returned (NSE or BSE)"
+        tried = []
+        for suffix, label in [(".NS", "NSE"), (".BO", "BSE"), ("-SM.NS", "NSE-SME")]:
+            hist = yf.Ticker(f"{symbol}{suffix}").history(period="1d")["Close"]
+            tried.append(label)
+            if len(hist):
+                result["price"] = round(float(hist.iloc[-1]), 2)
+                result["source"] = label
+                break
+        if result["price"] is None:
+            result["error"] = f"no data returned (tried {', '.join(tried)})"
     except Exception as exc:
         result["error"] = str(exc)
 
